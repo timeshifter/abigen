@@ -1,0 +1,3 @@
+:name=SomeContract
+#this is a comment
+somevar:uint8 othervar:int64 myFunction:fn -> somereturn:uint8 otherreturn:int32

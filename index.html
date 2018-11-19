@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ABI Generator</title>
+    <style>
+        #output {
+            font-family:monospace;
+            margin-top:20px;
+
+        }
+
+        textarea {
+            width:50%;
+        }
+    </style>
+</head>
+<body>
+    <div>
+        <p>
+            File: <input type="file" id="file" />
+        </p>
+        <hr />
+        <p><label>Contract text:</label></p>
+        <p><textarea id="contract" rows="4"></textarea></p>
+        <p><button id="generate" value="Generate">Generate</button></p>
+    </div>
+    <div id="output"></div>
+
+    <script src="abigen.js"></script>
+    <script>
+        var debug;
+
+        file.onchange = function (e) {
+            var reader = new FileReader();
+            var f = e.target.files[0];
+
+            reader.onload = (function (theFile) {
+                return function (e) {
+                    
+                    contract.value = e.target.result;
+                   
+                };
+            })(f);
+
+            reader.readAsText(f);
+
+        };
+
+        generate.onclick = function () {
+            var contractText = contract.value;
+
+
+            try {
+                var output = '';
+
+                output += ABIGen.GenerateCallResult(contractText);
+
+
+                console.log(output);
+
+                document.getElementById('output').innerHTML = output.replace(/\n/g, '<br/>').replace(/&/g, '&amp;').replace(/ /g, '&nbsp;');
+            }
+            catch (e) {
+                document.getElementById('output').innerHTML = 'Error: ' + e;
+            }
+
+        }
+
+
+    </script>
+</body>
+</html>
