@@ -18,11 +18,11 @@ var ABIGen = {
         var output = {};
 
         for (l of lines) {
-            if (l.trim().indexOf(':name=') == 0) {
+            if (l.trim().indexOf(':name=') === 0) {
                 output.ContractName = l.split('#')[0].split('=')[1].trim();
 
             }
-            else if (l.indexOf('->') > -1 && l.trim()[0] != '#') {
+            else if (l.indexOf('->') > -1 && l.trim()[0] !== '#') {
 
                 var sides = l.split('#')[0].split('->').map(function (t) { return t.trim(); });
 
@@ -30,14 +30,15 @@ var ABIGen = {
                     out_parts = sides[1].split(' ').map(function (t) { return t.trim(); });
 
                 output.InputParams = {};
+                var p_parts;
 
                 for (p of in_parts) {
-                    var p_parts = p.split(':');
-                    if (p_parts.length == 1 && p_parts[0] != 'void') {
+                    p_parts = p.split(':');
+                    if (p_parts.length === 1 && p_parts[0] !== 'void') {
                         throw 'Unrecognized syntax on left side of function definition (' + p + ').';
                     }
 
-                    if (p_parts[1] == 'fn') {
+                    if (p_parts[1] === 'fn') {
                         output.FunctionName = p_parts[0];
                     }
                     else {
@@ -54,15 +55,15 @@ var ABIGen = {
                 output.OutputParams = {};
 
                 for (p of out_parts) {
-                    var p_parts = p.split(':');
-                    if (p_parts.length == 1 && p_parts[0] != 'void') {
+                    p_parts = p.split(':');
+                    if (p_parts.length === 1 && p_parts[0] !== 'void') {
                         throw 'Unrecognized syntax on left side of function definition (' + p + ').';
                     }
 
-                    if (p_parts[1] == 'fn') {
+                    if (p_parts[1] === 'fn') {
                         output.FunctionName = p_parts[0];
                     }
-                    else if (p == 'void') {
+                    else if (p === 'void') {
                         output.OutputParams['void'] = 'void';
                     }
                     else {
