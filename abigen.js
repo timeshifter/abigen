@@ -117,7 +117,7 @@ static QtumCallResultABI {contract_name}_{func_name}(const UniversalAddressABI* 
     }
 {stack_push}
     uint32_t f = __ABIFN_{contract_name}_{func_name};
-    qtumStackPush(f, sizeof(f));
+    qtumStackPush(&f, sizeof(f));
     QtumCallResultABI result;
     qtumCallContract(contract, gasLimit, 0, &result);
     if (result.errorCode != 0) {
