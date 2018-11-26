@@ -21,17 +21,23 @@
         </p>
         <hr />
         <p><label>Contract text:</label></p>
-        <p><textarea id="contract" rows="4">
+        <p>
+            <textarea id="contract" rows="4">
 :name=SomeContract
 #this is a comment
 somevar:uint8 othervar:int64 myFunction:fn -> somereturn:uint8 otherreturn:int32
-</textarea></p>
+</textarea>
+        </p>
         <p><button id="generate" value="Generate">Generate</button></p>
     </div>
     <div id="output"></div>
 
     <script src="abigen.js"></script>
     <script>
+
+        //example of setting ABIFN identifier:
+        ABIGen.EncodeSeed = 42;
+
         var debug;
 
         file.onchange = function (e) {
@@ -40,9 +46,9 @@ somevar:uint8 othervar:int64 myFunction:fn -> somereturn:uint8 otherreturn:int32
 
             reader.onload = (function (theFile) {
                 return function (e) {
-                    
+
                     contract.value = e.target.result;
-                   
+
                 };
             })(f);
 
@@ -57,7 +63,10 @@ somevar:uint8 othervar:int64 myFunction:fn -> somereturn:uint8 otherreturn:int32
             try {
                 var output = '';
 
-                output += ABIGen.GenerateCallResult(contractText);
+                if (contractText.indexOf('UniversalAddress') >= 0)
+                    output += ABIGen.GenerateEncode_UniversalAddress(contractText);
+                else
+                    output += ABIGen.GenerateEncode(contractText);
 
 
                 console.log(output);

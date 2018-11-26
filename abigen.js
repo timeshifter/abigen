@@ -10,7 +10,8 @@ var ABIGen = {
         'int32': 'int32_t',
         'int64': 'int64_t',
         'char': 'char',
-        'void': 'void'
+        'void': 'void',
+        'UniversalAddress': 'UniversalAddressABI*'
     },
 
     ParseContract: function (contractText) {
@@ -89,8 +90,9 @@ var ABIGen = {
         return output;
     },
 
+    EncodeSeed: 1,
 
-    GenerateCallResult: function (contractText) {
+    GenerateEncode: function (contractText) {
         var _template =
             `
 #ifndef ABI_HEADER_{contract_name}
@@ -101,7 +103,7 @@ typedef struct {
 
 {return_struct}
 
-#define __ABIFN_{contract_name}_{func_name} 1
+#define __ABIFN_{contract_name}_{func_name} ${this.EncodeSeed}
 
 static QtumCallResultABI {contract_name}_{func_name}(const UniversalAddressABI* contract,
     uint64_t gasLimit,
@@ -128,7 +130,7 @@ static QtumCallResultABI {contract_name}_{func_name}(const UniversalAddressABI* 
 }
 #endif
 `;
-
+        this.EncodeSeed++;
         var contractMeta = this.ParseContract(contractText);
 
         var output = _template
@@ -180,6 +182,119 @@ typedef struct {\n`,
         return output;
 
 
-    }
+    },
 
+
+
+    GenerateEncode_UniversalAddress: function (contractText) {
+        var _template =
+            `
+typedef struct {
+{struct_input_vars}
+} {contract_name}_{func_name}_params;
+
+{return_struct}
+
+#define __ABIFN_{contract_name}_{func_name} ${this.EncodeSeed}
+
+static QtumCallResultABI {contract_name}_{func_name}(const UniversalAddressABI* contract,
+    uint64_t gasLimit,
+    const {contract_name}_{func_name}_params* params{return_params}
+    )
+{
+    if (gasLimit == 0) {
+        gasLimit = QTUM_CALL_GASLIMIT;
+    }
+    qtumStackClear();
+    if (params == NULL) {
+        qtumError("Invalid parameters");
+    }
+{stack_push}
+    uint32_t f = __ABIFN_{contract_name}_{func_name};
+    qtumStackPush(&f, sizeof(f));
+    QtumCallResultABI result;
+    qtumCallContract(contract, gasLimit, 0, &result);
+    if (result.errorCode != 0) {
+        return result;
+    }
+{stack_clear}
+    return result;
+}
+`;
+        this.EncodeSeed++;
+        var contractMeta = this.ParseContract(contractText);
+
+        var output = _template
+            .replace(/{contract_name}/g, contractMeta.ContractName)
+            .replace(/{func_name}/g, contractMeta.FunctionName);
+
+        var struct_input = '', stack_push = '';
+        for (i in contractMeta.InputParams) {
+            struct_input += `    ${contractMeta.InputParams[i]} ${i};\n`;
+            if (contractMeta.InputParams[i] === 'UniversalAddressABI*') {
+                stack_push += `
+    if(params->${i} == NULL){
+        qtumError("Invalid parameters");
+    }
+    qtumStackPush(params->${i}, sizeof(*params->${i}));\n`;
+            }
+            else {
+                stack_push += `    qtumStackPush(&params->${i}, sizeof(params->${i}));\n`;
+            }
+       }
+
+        output = output
+            .replace('{struct_input_vars}', struct_input.substring(0, struct_input.length - 1))
+            .replace('{stack_push}', stack_push.substring(0, stack_push.length - 1));
+
+
+
+
+        if (contractMeta.OutputParams['void']) {
+            output = output
+                .replace('{return_struct}', '')
+                .replace('{return_params}', '')
+                .replace('{stack_clear}', '');
+        }
+        else {
+
+
+            var struct_return = `
+typedef struct {\n`,
+                stack_pop = `
+    if (returns == NULL) {
+        qtumStackClear();
+    } 
+    else {
+    \n`;
+            for (i in contractMeta.OutputParams) {
+                struct_return += `    ${contractMeta.OutputParams[i]} ${i};\n`;
+                if (contractMeta.OutputParams[i] === 'UniversalAddressABI*') {
+                    stack_pop += `
+        if(returns->${i} == NULL){
+            qtumStackDiscard();
+        }else{
+            qtumStackPop(returns->${i}, sizeof(*returns->${i}));
+        }
+`;
+                }
+                else {
+
+
+                    stack_pop += `        qtumStackPop(&returns->${i}, sizeof(returns->${i}));\n`;
+                }
+            }
+            struct_return += `} ${contractMeta.ContractName}_${contractMeta.FunctionName}_returns;\n`;
+            stack_pop += '    }\n';
+            output = output
+                .replace('{return_struct}', struct_return.substring(0, struct_return.length - 1))
+                .replace('{stack_clear}', stack_pop)
+                .replace('{return_params}', `,
+    ${contractMeta.ContractName}_${contractMeta.FunctionName}_returns* returns`);
+        }
+
+
+
+        return output;
+    }
 };
