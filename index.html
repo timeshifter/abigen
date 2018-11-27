@@ -28,7 +28,7 @@
 somevar:uint8 othervar:int64 myFunction:fn -> somereturn:uint8 otherreturn:int32
 </textarea>
         </p>
-        <p><button id="generate" value="Generate">Generate</button></p>
+        <p>Generate: <button onclick="Generate('basic');">BasicTypes</button>&nbsp;<button onclick="Generate('universal');">UniversalAddress</button>&nbsp;<button onclick="Generate('decodefn');">Decode FN</button>&nbsp;<button onclick="Generate('decodecase');">Decode Case</button> </p>
     </div>
     <div id="output"></div>
 
@@ -56,18 +56,27 @@ somevar:uint8 othervar:int64 myFunction:fn -> somereturn:uint8 otherreturn:int32
 
         };
 
-        generate.onclick = function () {
+        function Generate(type) {
             var contractText = contract.value;
-
+            console.log(type);
 
             try {
                 var output = '';
 
-                if (contractText.indexOf('UniversalAddress') >= 0)
-                    output += ABIGen.GenerateEncode_UniversalAddress(contractText);
-                else
-                    output += ABIGen.GenerateEncode(contractText);
-
+                switch (type) {
+                    case 'basic':
+                        output += ABIGen.GenerateEncode_BasicTypes(contractText);
+                        break;
+                    case 'universal':
+                        output += ABIGen.GenerateEncode_UniversalAddress(contractText);
+                        break;
+                    case 'decodefn':
+                        output += ABIGen.GenerateDecodeFunction(contractText);
+                        break;
+                    case 'decodecase':
+                        output += ABIGen.GenerateDecodeCase(contractText);
+                        break;
+                }
 
                 console.log(output);
 

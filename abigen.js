@@ -44,7 +44,7 @@ var ABIGen = {
                     }
                     else {
                         if (!this.TypeMap[p_parts[1]]) {
-                            throw 'Unknown input type (' + p + ')';
+                            throw 'Unknown input type (' + p + ').';
                         }
 
                         output.InputParams[p_parts[0]] = this.TypeMap[p_parts[1]];
@@ -69,7 +69,7 @@ var ABIGen = {
                     }
                     else {
                         if (!this.TypeMap[p_parts[1]]) {
-                            throw 'Unknown output type (' + p + ')';
+                            throw 'Unknown output type (' + p + ').';
                         }
 
                         output.OutputParams[p_parts[0]] = this.TypeMap[p_parts[1]];
@@ -92,7 +92,7 @@ var ABIGen = {
 
     EncodeSeed: 1,
 
-    GenerateEncode: function (contractText) {
+    GenerateEncode_BasicTypes: function (contractText) {
         var _template =
             `
 #ifndef ABI_HEADER_{contract_name}
@@ -132,6 +132,20 @@ static QtumCallResultABI {contract_name}_{func_name}(const UniversalAddressABI* 
 `;
         this.EncodeSeed++;
         var contractMeta = this.ParseContract(contractText);
+
+
+        var varPass = false;
+        for (i in contractMeta.InputParams)
+            if (contractMeta.InputParams[i] === 'UniversalAddressABI*')
+                varPass = true;
+        for (i in contractMeta.OutputParams)
+            if (contractMeta.OutputParams[i] === 'UniversalAddressABI*')
+                varPass = true;
+
+        if (varPass)
+            throw "BasicTypes encoder selected, but UniversalAddress parameter provided.";
+
+
 
         var output = _template
             .replace(/{contract_name}/g, contractMeta.ContractName)
@@ -224,6 +238,18 @@ static QtumCallResultABI {contract_name}_{func_name}(const UniversalAddressABI* 
         this.EncodeSeed++;
         var contractMeta = this.ParseContract(contractText);
 
+        var varPass = false;
+        for (i in contractMeta.InputParams)
+            if (contractMeta.InputParams[i] === 'UniversalAddressABI*')
+                varPass = true;
+        for (i in contractMeta.OutputParams)
+            if (contractMeta.OutputParams[i] === 'UniversalAddressABI*')
+                varPass = true;
+
+        if (!varPass)
+            throw "UniversalAddress encoder selected, but no UniversalAddress parameter provided.";
+
+
         var output = _template
             .replace(/{contract_name}/g, contractMeta.ContractName)
             .replace(/{func_name}/g, contractMeta.FunctionName);
@@ -296,5 +322,102 @@ typedef struct {\n`,
 
 
         return output;
+    },
+
+    GenerateDecodeFunction: function (contractText) {
+
+
+        var _template = `
+void qtumabi_{contract_name}_decodeABI(){
+    uint32_t function = 0;
+    if(qtumStackItemCount() == 0){
+        qtumabi_default();
     }
+    qtumStackPop(&function, sizeof(function));
+    switch(function){
+{case}
+        //{case_insert}
+        default:
+            qtumabi_fallback();
+            return;
+    }
+}`;
+
+        var contractMeta = this.ParseContract(contractText);
+        var output = _template
+            .replace(/{contract_name}/g, contractMeta.ContractName)
+            .replace(/{case}/g, this.GenerateDecodeCase(contractText));
+
+        return output;
+
+    },
+
+    GenerateDecodeCase: function (contractText) {
+
+        var _template = `
+        case __ABIFN_{contract_name}_{func_name}:
+        {
+            {contract_name}_{func_name}_Params params;
+{params}
+
+            {contract_name}_{func_name}_Returns returns;
+{returns_buffer}
+
+            {contract_name}_{func_name}(&params, &returns);
+{returns_push}
+            return;
+        }`;
+
+        var contractMeta = this.ParseContract(contractText);
+        var output = _template
+            .replace(/{contract_name}/g, contractMeta.ContractName)
+            .replace(/{func_name}/g, contractMeta.FunctionName);
+
+        var i = 1;
+        var params_buffer = '', params_pop = '';
+
+        for (param in contractMeta.InputParams) {
+            if (contractMeta.InputParams[param] === 'UniversalAddressABI*') {
+                params_buffer += `
+            UniversalAddressABI __tmp${i};
+            params.${param} = &__tmp${i++};`;
+
+                params_pop += `
+            qtumStackPop(params.${param}, sizeof(*params.${param}));`;
+            }
+            else {
+                params_pop += `
+            qtumStackPop(&params.${param}, sizeof(params.${param}));`;
+            }
+        }
+
+        output = output.replace(/{params}/g, params_buffer + `\n` + params_pop);
+
+        var return_buffer = '', return_push = '';
+
+        for (param in contractMeta.OutputParams) {
+            if (contractMeta.OutputParams[param] === 'UniversalAddressABI*') {
+                return_buffer += `
+            UniversalAddressABI __tmp${i};
+            returns.${param} = &__tmp${i++};`;
+
+                return_push += `
+            qtumStackPush(returns.${param}, sizeof(*returns.${param}));`;
+            }
+            else {
+                return_push += `
+            qtumStackPush(&returns.${param}, sizeof(returns.${param}));`;
+            }
+        }
+
+        output = output
+            .replace(/{returns_buffer}/, return_buffer)
+            .replace(/{returns_push}/, return_push);
+
+
+        return output;
+
+    }
+
+
 };
