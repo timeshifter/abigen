@@ -17,6 +17,7 @@ var ABIGen = {
     ParseContract: function (contractText) {
         var lines = contractText.split('\n');
         var output = {};
+        output.Functions = [];
 
         for (l of lines) {
             if (l.trim().indexOf(':name=') === 0) {
@@ -30,7 +31,9 @@ var ABIGen = {
                 var in_parts = sides[0].split(' ').map(function (t) { return t.trim(); }),
                     out_parts = sides[1].split(' ').map(function (t) { return t.trim(); });
 
-                output.InputParams = {};
+                var fn = {};
+
+                fn.InputParams = {};
                 var p_parts;
 
                 for (p of in_parts) {
@@ -40,20 +43,20 @@ var ABIGen = {
                     }
 
                     if (p_parts[1] === 'fn') {
-                        output.FunctionName = p_parts[0];
+                        fn.FunctionName = p_parts[0];
                     }
                     else {
                         if (!this.TypeMap[p_parts[1]]) {
                             throw 'Unknown input type (' + p + ').';
                         }
 
-                        output.InputParams[p_parts[0]] = this.TypeMap[p_parts[1]];
+                        fn.InputParams[p_parts[0]] = this.TypeMap[p_parts[1]];
 
                     }
 
                 }
 
-                output.OutputParams = {};
+                fn.OutputParams = {};
 
                 for (p of out_parts) {
                     p_parts = p.split(':');
@@ -62,48 +65,43 @@ var ABIGen = {
                     }
 
                     if (p_parts[1] === 'fn') {
-                        output.FunctionName = p_parts[0];
+                        fn.FunctionName = p_parts[0];
                     }
                     else if (p === 'void') {
-                        output.OutputParams['void'] = 'void';
+                        fn.OutputParams['void'] = 'void';
                     }
                     else {
                         if (!this.TypeMap[p_parts[1]]) {
                             throw 'Unknown output type (' + p + ').';
                         }
 
-                        output.OutputParams[p_parts[0]] = this.TypeMap[p_parts[1]];
+                        fn.OutputParams[p_parts[0]] = this.TypeMap[p_parts[1]];
 
                     }
 
                 }
+
+                output.Functions.push(fn);
 
             }
         }
         if (!output.ContractName) {
             throw 'Contract does not have a name.';
         }
-        if (!output.FunctionName) {
-            throw 'Contract has no function name.';
-        }
 
         return output;
     },
 
-    EncodeSeed: 1,
-
-    GenerateEncode_BasicTypes: function (contractText) {
+    GenerateEncode: function (contractText) {
         var _template =
-            `
-#ifndef ABI_HEADER_{contract_name}
-#define ABI_HEADER_{contract_name}
+`
 typedef struct {
 {struct_input_vars}
 } {contract_name}_{func_name}_params;
 
 {return_struct}
 
-#define __ABIFN_{contract_name}_{func_name} ${this.EncodeSeed}
+#define __ABIFN_{contract_name}_{func_name} {function_counter}
 
 static QtumCallResultABI {contract_name}_{func_name}(const UniversalAddressABI* contract,
     uint64_t gasLimit,
@@ -117,7 +115,9 @@ static QtumCallResultABI {contract_name}_{func_name}(const UniversalAddressABI* 
     if (params == NULL) {
         qtumError("Invalid parameters");
     }
+
 {stack_push}
+
     uint32_t f = __ABIFN_{contract_name}_{func_name};
     qtumStackPush(&f, sizeof(f));
     QtumCallResultABI result;
@@ -128,201 +128,101 @@ static QtumCallResultABI {contract_name}_{func_name}(const UniversalAddressABI* 
 {stack_clear}
     return result;
 }
-#endif
+
 `;
+
         this.EncodeSeed++;
         var contractMeta = this.ParseContract(contractText);
+        var func_counter = 1;
+        
+
+        var output = 
+`#ifndef ABI_HEADER_${contractMeta.ContractName}
+#define ABI_HEADER_${contractMeta.ContractName}
+`;
+
+        for (var fn of contractMeta.Functions) {
+
+            var curr_template = _template
+                .replace(/{contract_name}/g, contractMeta.ContractName)
+                .replace(/{func_name}/g, fn.FunctionName)
+                .replace('{function_counter}', func_counter++);
 
 
-        var varPass = false;
-        for (i in contractMeta.InputParams)
-            if (contractMeta.InputParams[i] === 'UniversalAddressABI*')
-                varPass = true;
-        for (i in contractMeta.OutputParams)
-            if (contractMeta.OutputParams[i] === 'UniversalAddressABI*')
-                varPass = true;
-
-        if (varPass)
-            throw "BasicTypes encoder selected, but UniversalAddress parameter provided.";
 
 
-
-        var output = _template
-            .replace(/{contract_name}/g, contractMeta.ContractName)
-            .replace(/{func_name}/g, contractMeta.FunctionName);
-
-        var struct_input = '', stack_push = '';
-        for (i in contractMeta.InputParams) {
-            struct_input += `    ${contractMeta.InputParams[i]} ${i};\n`;
-            stack_push += `    qtumStackPush(&params->${i}, sizeof(params->${i}));\n`;
-        }
-
-        output = output
-            .replace('{struct_input_vars}', struct_input.substring(0, struct_input.length - 1))
-            .replace('{stack_push}', stack_push.substring(0, stack_push.length - 1));
-
-
-        if (contractMeta.OutputParams['void']) {
-            output = output
-                .replace('{return_struct}', '')
-                .replace('{return_params}', '')
-                .replace('{stack_clear}', '');
-        }
-        else {
-
-
-            var struct_return = `
-typedef struct {\n`,
-                stack_pop = `
-    if (returns == NULL) {
-        qtumStackClear();
-    } 
-    else {
-    \n`;
-            for (i in contractMeta.OutputParams) {
-                struct_return += `    ${contractMeta.OutputParams[i]} ${i};\n`;
-                stack_pop += `        qtumStackPop(&returns->${i}, sizeof(returns->${i}));\n`;
+            var struct_input = '', stack_push = '';
+            for (i in fn.InputParams) {
+                struct_input += `    ${fn.InputParams[i]} ${i};\n`;
+                if (fn.InputParams[i] === 'UniversalAddressABI*') {
+                    stack_push +=
+                        `    if(params->${i} == NULL){
+        qtumError("Invalid parameters");
+    }
+    qtumStackPush(params->${i}, sizeof(*params->${i}));
+`;
+                }
+                else {
+                    stack_push += `    qtumStackPush(&params->${i}, sizeof(params->${i}));\n`;
+                }
             }
-            struct_return += `} ${contractMeta.ContractName}_${contractMeta.FunctionName}_returns;\n`;
-            stack_pop += '    }\n';
-            output = output
-                .replace('{return_struct}', struct_return.substring(0, struct_return.length - 1))
-                .replace('{stack_clear}', stack_pop)
-                .replace('{return_params}', `,
-    ${contractMeta.ContractName}_${contractMeta.FunctionName}_returns* returns`);
-        }
+
+            curr_template = curr_template
+                .replace('{struct_input_vars}', struct_input.substring(0, struct_input.length - 1))
+                .replace('{stack_push}', stack_push.substring(0, stack_push.length - 1));
 
 
-        return output;
-
-
-    },
-
-
-
-    GenerateEncode_UniversalAddress: function (contractText) {
-        var _template =
-            `
-typedef struct {
-{struct_input_vars}
-} {contract_name}_{func_name}_params;
-
-{return_struct}
-
-#define __ABIFN_{contract_name}_{func_name} ${this.EncodeSeed}
-
-static QtumCallResultABI {contract_name}_{func_name}(const UniversalAddressABI* contract,
-    uint64_t gasLimit,
-    const {contract_name}_{func_name}_params* params{return_params}
-    )
-{
-    if (gasLimit == 0) {
-        gasLimit = QTUM_CALL_GASLIMIT;
-    }
-    qtumStackClear();
-    if (params == NULL) {
-        qtumError("Invalid parameters");
-    }
-{stack_push}
-    uint32_t f = __ABIFN_{contract_name}_{func_name};
-    qtumStackPush(&f, sizeof(f));
-    QtumCallResultABI result;
-    qtumCallContract(contract, gasLimit, 0, &result);
-    if (result.errorCode != 0) {
-        return result;
-    }
-{stack_clear}
-    return result;
-}
-`;
-        this.EncodeSeed++;
-        var contractMeta = this.ParseContract(contractText);
-
-        var varPass = false;
-        for (i in contractMeta.InputParams)
-            if (contractMeta.InputParams[i] === 'UniversalAddressABI*')
-                varPass = true;
-        for (i in contractMeta.OutputParams)
-            if (contractMeta.OutputParams[i] === 'UniversalAddressABI*')
-                varPass = true;
-
-        if (!varPass)
-            throw "UniversalAddress encoder selected, but no UniversalAddress parameter provided.";
-
-
-        var output = _template
-            .replace(/{contract_name}/g, contractMeta.ContractName)
-            .replace(/{func_name}/g, contractMeta.FunctionName);
-
-        var struct_input = '', stack_push = '';
-        for (i in contractMeta.InputParams) {
-            struct_input += `    ${contractMeta.InputParams[i]} ${i};\n`;
-            if (contractMeta.InputParams[i] === 'UniversalAddressABI*') {
-                stack_push += `
-    if(params->${i} == NULL){
-        qtumError("Invalid parameters");
-    }
-    qtumStackPush(params->${i}, sizeof(*params->${i}));\n`;
+            if (fn.OutputParams['void']) {
+                curr_template = curr_template
+                    .replace('{return_struct}', '')
+                    .replace('{return_params}', '')
+                    .replace('{stack_clear}', '');
             }
             else {
-                stack_push += `    qtumStackPush(&params->${i}, sizeof(params->${i}));\n`;
-            }
-       }
-
-        output = output
-            .replace('{struct_input_vars}', struct_input.substring(0, struct_input.length - 1))
-            .replace('{stack_push}', stack_push.substring(0, stack_push.length - 1));
 
 
-
-
-        if (contractMeta.OutputParams['void']) {
-            output = output
-                .replace('{return_struct}', '')
-                .replace('{return_params}', '')
-                .replace('{stack_clear}', '');
-        }
-        else {
-
-
-            var struct_return = `
+                var struct_return = `
 typedef struct {\n`,
-                stack_pop = `
+                    stack_pop = `
     if (returns == NULL) {
         qtumStackClear();
     } 
     else {
-    \n`;
-            for (i in contractMeta.OutputParams) {
-                struct_return += `    ${contractMeta.OutputParams[i]} ${i};\n`;
-                if (contractMeta.OutputParams[i] === 'UniversalAddressABI*') {
-                    stack_pop += `
-        if(returns->${i} == NULL){
+`;
+                for (i in fn.OutputParams) {
+                    struct_return += `    ${fn.OutputParams[i]} ${i};\n`;
+                    if (fn.OutputParams[i] === 'UniversalAddressABI*') {
+                        stack_pop +=
+                            `        if(returns->${i} == NULL){
             qtumStackDiscard();
         }else{
             qtumStackPop(returns->${i}, sizeof(*returns->${i}));
         }
 `;
+                    }
+                    else {
+                        stack_pop += `        qtumStackPop(&returns->${i}, sizeof(returns->${i}));\n`;
+                    }
                 }
-                else {
 
-
-                    stack_pop += `        qtumStackPop(&returns->${i}, sizeof(returns->${i}));\n`;
-                }
+                struct_return += `} ${fn.ContractName}_${fn.FunctionName}_returns;\n`;
+                stack_pop += '    }\n';
+                curr_template = curr_template
+                    .replace('{return_struct}', struct_return.substring(0, struct_return.length - 1))
+                    .replace('{stack_clear}', stack_pop)
+                    .replace('{return_params}', `,
+    ${fn.ContractName}_${fn.FunctionName}_returns* returns`);
             }
-            struct_return += `} ${contractMeta.ContractName}_${contractMeta.FunctionName}_returns;\n`;
-            stack_pop += '    }\n';
-            output = output
-                .replace('{return_struct}', struct_return.substring(0, struct_return.length - 1))
-                .replace('{stack_clear}', stack_pop)
-                .replace('{return_params}', `,
-    ${contractMeta.ContractName}_${contractMeta.FunctionName}_returns* returns`);
+
+            output += curr_template;
         }
 
-
+        output += `#endif\n`;
 
         return output;
+
     },
+
 
     GenerateDecodeFunction: function (contractText) {
 
@@ -352,6 +252,8 @@ void qtumabi_{contract_name}_decodeABI(){
 
     },
 
+
+
     GenerateDecodeCase: function (contractText) {
 
         var _template = `
@@ -360,60 +262,70 @@ void qtumabi_{contract_name}_decodeABI(){
             {contract_name}_{func_name}_Params params;
 {params}
 
-            {contract_name}_{func_name}_Returns returns;
 {returns_buffer}
 
-            {contract_name}_{func_name}(&params, &returns);
 {returns_push}
             return;
         }`;
 
         var contractMeta = this.ParseContract(contractText);
-        var output = _template
-            .replace(/{contract_name}/g, contractMeta.ContractName)
-            .replace(/{func_name}/g, contractMeta.FunctionName);
+        var output = '';
 
-        var i = 1;
-        var params_buffer = '', params_pop = '';
+        for (var fn of contractMeta.Functions) {
 
-        for (param in contractMeta.InputParams) {
-            if (contractMeta.InputParams[param] === 'UniversalAddressABI*') {
-                params_buffer += `
+            var fn_output = _template
+                .replace(/{contract_name}/g, contractMeta.ContractName)
+                .replace(/{func_name}/g, fn.FunctionName);
+
+            var i = 1;
+            var params_buffer = '', params_pop = '';
+
+            for (param in fn.InputParams) {
+                if (fn.InputParams[param] === 'UniversalAddressABI*') {
+                    params_buffer += `
             UniversalAddressABI __tmp${i};
             params.${param} = &__tmp${i++};`;
 
-                params_pop += `
+                    params_pop += `
             qtumStackPop(params.${param}, sizeof(*params.${param}));`;
-            }
-            else {
-                params_pop += `
+                }
+                else {
+                    params_pop += `
             qtumStackPop(&params.${param}, sizeof(params.${param}));`;
+                }
             }
-        }
 
-        output = output.replace(/{params}/g, params_buffer + `\n` + params_pop);
+            fn_output = fn_output.replace(/{params}/g, params_buffer + `\n` + params_pop);
 
-        var return_buffer = '', return_push = '';
+            var return_buffer = '', return_push = '';
 
-        for (param in contractMeta.OutputParams) {
-            if (contractMeta.OutputParams[param] === 'UniversalAddressABI*') {
-                return_buffer += `
+            if (fn.OutputParams.length > 0) {
+
+                return_buffer = `            ${contractMeta.ContractName}_${fn.FunctionName}_Returns returns;`;
+                return_push = `            ${contractMeta.ContractName}_${fn.FunctionName}(&params, &returns);`;
+
+                for (param in fn.OutputParams) {
+                    if (fn.OutputParams[param] === 'UniversalAddressABI*') {
+                        return_buffer += `
             UniversalAddressABI __tmp${i};
             returns.${param} = &__tmp${i++};`;
 
-                return_push += `
+                        return_push += `
             qtumStackPush(returns.${param}, sizeof(*returns.${param}));`;
-            }
-            else {
-                return_push += `
+                    }
+                    else {
+                        return_push += `
             qtumStackPush(&returns.${param}, sizeof(returns.${param}));`;
+                    }
+                }
             }
+
+            fn_output = fn_output
+                .replace(/{returns_buffer}/, return_buffer)
+                .replace(/{returns_push}/, return_push);
+
+            output += fn_output;
         }
-
-        output = output
-            .replace(/{returns_buffer}/, return_buffer)
-            .replace(/{returns_push}/, return_push);
-
 
         return output;
 

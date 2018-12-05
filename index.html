@@ -3,10 +3,18 @@
 <head>
     <title>ABI Generator</title>
     <style>
+        #output_wrapper {
+            overflow:auto;
+            margin-top:20px;
+            border:3px inset #666;
+            min-width:800px;
+            max-width:75%;
+            
+        }
+        
         #output {
             font-family:monospace;
-            margin-top:20px;
-
+            padding:10px;
         }
 
         textarea {
@@ -25,20 +33,28 @@
             <textarea id="contract" rows="4">
 :name=SomeContract
 #this is a comment
-somevar:uint8 othervar:int64 myFunction:fn -> somereturn:uint8 otherreturn:int32
+somevar:uint8 othervar:UniversalAddress myFunction:fn -> somereturn:uint8 otherreturn:UniversalAddress
+fn2:uint16 myOtherFunction:fn -> void
 </textarea>
         </p>
-        <p>Generate: <button onclick="Generate('basic');">BasicTypes</button>&nbsp;<button onclick="Generate('universal');">UniversalAddress</button>&nbsp;<button onclick="Generate('decodefn');">Decode FN</button>&nbsp;<button onclick="Generate('decodecase');">Decode Case</button> </p>
+        <p>Generate: <button onclick="Generate('encode');">Encode</button>&nbsp;<button onclick="Generate('decodefn');">Decode FN</button>&nbsp;<button onclick="Generate('decodecase');">Decode Case</button> </p>
+        <p><button id="copy_btn" onclick="Copy();" disabled>Copy to clipboard</button></p>
     </div>
-    <div id="output"></div>
+    <div id="output_wrapper">
+        <div id="output"></div>
+    </div>
 
     <script src="abigen.js"></script>
     <script>
 
-        //example of setting ABIFN identifier:
-        ABIGen.EncodeSeed = 42;
+        function SizeOutput() {
+            output_wrapper.style["height"] = (window.innerHeight - output_wrapper.getBoundingClientRect().top - 20) + 'px';
+        }
 
-        var debug;
+        window.onresize = SizeOutput;
+        SizeOutput();
+
+        var copyText;
 
         file.onchange = function (e) {
             var reader = new FileReader();
@@ -56,34 +72,67 @@ somevar:uint8 othervar:int64 myFunction:fn -> somereturn:uint8 otherreturn:int32
 
         };
 
-        function Generate(type) {
-            var contractText = contract.value;
-            console.log(type);
+
+        function fallbackCopyTextToClipboard(text) {
+            var textArea = document.createElement("textarea");
+            textArea.value = text;
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
 
             try {
-                var output = '';
+                var successful = document.execCommand('copy');
+                var msg = successful ? 'successful' : 'unsuccessful';
+                console.log('Fallback: Copying text command was ' + msg);
+            } catch (err) {
+                console.error('Fallback: Oops, unable to copy', err);
+            }
+
+            document.body.removeChild(textArea);
+        }
+        function copyTextToClipboard(text) {
+            if (!navigator.clipboard) {
+                fallbackCopyTextToClipboard(text);
+                return;
+            }
+            navigator.clipboard.writeText(text).then(function () {
+                console.log('Async: Copying to clipboard was successful!');
+            }, function (err) {
+                console.error('Async: Could not copy text: ', err);
+            });
+        }
+
+
+        function Copy() {
+            copyTextToClipboard(copyText);
+        }
+
+        function Generate(type) {
+            var contractText = contract.value;
+
+            try {
+                var output_str = '';
 
                 switch (type) {
-                    case 'basic':
-                        output += ABIGen.GenerateEncode_BasicTypes(contractText);
-                        break;
-                    case 'universal':
-                        output += ABIGen.GenerateEncode_UniversalAddress(contractText);
+                    case 'encode':
+                        output_str += ABIGen.GenerateEncode(contractText);
                         break;
                     case 'decodefn':
-                        output += ABIGen.GenerateDecodeFunction(contractText);
+                        output_str += ABIGen.GenerateDecodeFunction(contractText);
                         break;
                     case 'decodecase':
-                        output += ABIGen.GenerateDecodeCase(contractText);
+                        output_str += ABIGen.GenerateDecodeCase(contractText);
                         break;
                 }
 
-                console.log(output);
-
-                document.getElementById('output').innerHTML = output.replace(/\n/g, '<br/>').replace(/&/g, '&amp;').replace(/ /g, '&nbsp;');
+                //console.log(output);
+                copy_btn.disabled = false;
+                copyText = output_str;
+                
+                output.innerHTML = output_str.replace(/\n/g, '<br/>').replace(/&/g, '&amp;').replace(/ /g, '&nbsp;');
             }
             catch (e) {
-                document.getElementById('output').innerHTML = 'Error: ' + e;
+                output.innerHTML = 'Error: ' + e;
             }
 
         }
