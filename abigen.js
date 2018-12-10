@@ -259,7 +259,7 @@ void qtumabi_{contract_name}_decodeABI(){
         var _template = `
         case __ABIFN_{contract_name}_{func_name}:
         {
-            {contract_name}_{func_name}_Params params;
+            {contract_name}_{func_name}_params params;
 {params}
 
 {returns_buffer}
