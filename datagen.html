@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>ABI Datagen</title>
+    <style> 
+        * {
+            margin:0; 
+            padding:0; 
+            outline:0; 
+            list-style: none; 
+            border:none; 
+            box-sizing: border-box; 
+            font-family:Arial, Helvetica, sans-serif; 
+            font-weight:normal;
+            font-size:16px;
+        }
+
+        main.container {
+            margin:0 auto;
+            max-width:1260px;
+        }
+
+        h1 {
+            margin:0.5em 0;
+            font-size:2em;
+        }
+
+        h2 {
+            font-size:1.6em;
+            margin-top:1em;
+        }
+
+        h3 {
+            font-size:1.2em;
+            margin-top:1em;
+            margin-bottom:0.2em;
+        }
+
+        textarea {
+            display:block;
+            width:80%;
+            border-radius:0.3em;
+            border:1px solid #70a0ff;
+            padding:0.3em;
+            font-family:'Courier New', Courier, monospace;
+            font-size:0.9em;
+        }
+
+        p.info {
+            font-size:0.9em;
+            color:#606060;
+            margin-bottom:0.2em;
+        }
+
+        p#abi_feedback {
+            color:red;
+        }
+
+        #lblABIName {
+            display:inline-block;
+            width:140px;
+        }
+
+         #txtABIName {
+            border-radius:0.25em;
+            border:1px solid #70a0ff;
+            width:250px;
+            padding:0.3em;
+            font-size:0.9em;
+        }
+
+        ul#params {
+            margin-top:1em;
+        }
+
+        ul#params li {
+            margin-bottom:0.4em;
+        }
+
+        ul#params li input {
+            border-radius:0.25em;
+            border:1px solid #70a0ff;
+            width:130px;
+            padding:0.3em;
+            font-size:0.9em;
+        }
+
+        ul#params li select {
+            border-radius:0.25em;
+            border:1px solid #70a0ff;
+            width:150px;
+            padding:0.25em;
+            font-size:0.9em;
+        }
+
+        ul#params input.param_val {
+            width:50%;
+        }
+
+        ul#params p.encoded {
+            display:none;
+        }
+
+    </style>
+</head>
+<body>
+    <main class="container">
+        <h1>ABI Datagen</h1>
+
+        <h3>ABI:</h3>
+        <textarea id="txtABI" rows="3" onchange="UpdateABI();" onblur="UpdateABI();">
+:name=ExampleABI
+arg1:uint8 arg2:uint32[] argUA:UniversalAddress SimpleFun:fn -> ret1:uint8
+</textarea>
+        <p id="abi_feedback"></p>
+        <h3>Data:</h3>
+        <p class="info">Paste a data string here to validate and encode, otherwise skip this and enter data manually below.</p>
+        <textarea id="txtData" rows="6" oninput="UpdateData();" onblur="UpdateData();">
+{
+    arg1: 0x20
+    arg2: [0x11223344, 0xdeadbeef, 0xffeeddcc]
+    argUA: Qbf6sk8kydFLnikXGkSxKLcczNBwVgWwrR
+    _function: SimpleFun
+}
+</textarea>
+
+        <h2>Params</h2>
+        <label id="lblABIName">ABI name:</label>
+        <input id="txtABIName" type="text" />
+
+        <ul id="params">
+
+            
+        </ul>
+    </main>
+
+
+
+    <script src="datagen.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+
+    <script>
+
+        var param_template =
+`            <li>
+                <input type="text" class="arg" />
+                <select>
+                    <option>uint8</option>
+                    <option>uint16</option>
+                    <option>uint32</option>
+                    <option>uint64</option>
+                    <option>int8</option>
+                    <option>int16</option>
+                    <option>int32</option>
+                    <option>int64</option>
+                    <option>char</option>
+                    <option>uint8[]</option>
+                    <option>uint16[]</option>
+                    <option>uint32[]</option>
+                    <option>uint64[]</option>
+                    <option>int8[]</option>
+                    <option>int16[]</option>
+                    <option>int32[]</option>
+                    <option>int64[]</option>
+                    <option>char[]</option>
+                    <option value="fn">_function</option>
+                    <option>UniversalAddress</option>
+                </select>
+                <input type="text" class="param_val" />
+                <p class="encoded"></p>
+            </li>`;
+
+        $(function() {
+
+            $('#params').on('change', 'select', function() {
+                if($(this).val()=='fn'){
+                    $(this).parent().find('input.param_val').hide();
+                }
+                else{
+                    $(this).parent().find('input.param_val').show();
+                }
+            });
+
+
+            UpdateABI();
+        });
+
+
+
+        function UpdateABI() {
+            $('#abi_feedback').html('');
+            try{
+                var abi = ABIdatagen.ParseContract(txtABI.value);
+            }
+            catch(e){
+                $('#abi_feedback').html(e);
+                return;
+            }
+            
+            txtABIName.value = abi.ContractName;
+
+            var liIdx=0;
+            $('#params').html('');
+
+
+
+            for(var i = 0;i<abi.InputParams.length;i++){
+
+                if($('#params li').length>liIdx){
+
+
+                }
+                else{
+                    var $li = $(param_template);
+                    $li.find('select').val(abi.InputParams[i].Type);
+                    $li.find('input.arg').val(abi.InputParams[i].Val);
+
+                    if(abi.InputParams[i].Type=='fn')
+                        $li.find('input.param_val').hide();
+
+                    $('#params').append($li);
+                }
+
+                
+                liIdx++;
+            }
+
+            UpdateData();
+
+        }
+
+        function UpdateData() {
+            var data = ABIdatagen.ParseData(txtData.value);
+            $('#params li').each(function() {
+                     for (d of data) {
+                    if (d.Param == $(this).find('input.arg').val()) {
+                        $(this).find('input.param_val').val(d.Val);
+                    }
+                }
+               
+            });
+        }
+
+        function myhash() {
+                var sha256 = new jsSHA('SHA-256', 'TEXT');
+                sha256.update('some_string_variable_to_hash');
+                var hash = sha256.getHash("HEX");
+        }
+
+        
+    </script>
+</body>
+</html>
