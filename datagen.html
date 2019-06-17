@@ -101,7 +101,11 @@
         }
 
         ul#params p.encoded {
-            display:none;
+            width:50%;
+            margin-left:290px;
+            margin-top:0.3em;
+            font-size:0.9em;
+            color:#606060;
         }
 
     </style>
@@ -156,7 +160,6 @@ arg1:uint8 arg2:uint32[] argUA:UniversalAddress SimpleFun:fn -> ret1:uint8
                     <option>int16</option>
                     <option>int32</option>
                     <option>int64</option>
-                    <option>char</option>
                     <option>uint8[]</option>
                     <option>uint16[]</option>
                     <option>uint32[]</option>
@@ -165,7 +168,6 @@ arg1:uint8 arg2:uint32[] argUA:UniversalAddress SimpleFun:fn -> ret1:uint8
                     <option>int16[]</option>
                     <option>int32[]</option>
                     <option>int64[]</option>
-                    <option>char[]</option>
                     <option value="fn">_function</option>
                     <option>UniversalAddress</option>
                 </select>
@@ -192,8 +194,9 @@ arg1:uint8 arg2:uint32[] argUA:UniversalAddress SimpleFun:fn -> ret1:uint8
 
         function UpdateABI() {
             $('#abi_feedback').html('');
+            var abi;
             try{
-                var abi = ABIdatagen.ParseContract(txtABI.value);
+                abi = ABIdatagen.ParseContract(txtABI.value);
             }
             catch(e){
                 $('#abi_feedback').html(e);
@@ -228,19 +231,59 @@ arg1:uint8 arg2:uint32[] argUA:UniversalAddress SimpleFun:fn -> ret1:uint8
                 liIdx++;
             }
 
-            UpdateData();
+            UpdateData(abi);
 
         }
 
-        function UpdateData() {
+        function UpdateData(abi) {
+            if(abi==undefined)
+                UpdateABI();
             var data = ABIdatagen.ParseData(txtData.value);
+            console.log(abi);
+            console.log(data);
             $('#params li').each(function() {
-                     for (d of data) {
-                    if (d.Param == $(this).find('input.arg').val()) {
-                        $(this).find('input.param_val').val(d.Val);
-                    }
+
+                var val;
+
+                if($(this).find('select').val()=='fn'){
+                    val = ABIdatagen.GetFunctionID(abi);
                 }
-               
+                else if($(this).find('select').val()=='UniversalAddress'){
+                    for (d of data) {
+                        if (d.Param == $(this).find('input.arg').val()) {
+                            $(this).find('input.param_val').val(d.Val);
+                            val=ABIdatagen.EncodeUA(d.Val);
+                        }
+                    }
+
+                }
+                else{
+                    for (d of data) {
+                        if (d.Param == $(this).find('input.arg').val()) {
+                            $(this).find('input.param_val').val(d.Val);
+
+                            var t='';
+                            for(i of abi.InputParams){
+                                if(i.Val==d.Param){
+                                    t=i.Type;
+                                    break;
+                                }
+                            }  
+                            try{
+                                val = ABIdatagen.EncodeValue(t, d.Val)     
+                            }
+                            catch(ex) {
+                                val=ex;
+                            }
+                        }
+                    }
+
+
+
+                }
+               $(this).find('p.encoded').html(val);
+
+            
             });
         }
 

@@ -22,6 +22,17 @@ var ABIdatagen = {
         'UniversalAddress'
     ],
 
+    VersionMap: {
+        58: 2,
+        120: 2,
+        50: 5,
+        110: 5,
+        33: 1,
+        92: 1,
+        75: 4,
+        137: 4
+    },
+
     ParseContract: function (contractText) {
         var lines = contractText.split('\n');
         var output = {};
@@ -66,32 +77,21 @@ var ABIdatagen = {
                 if (input_fn_ct > 1)
                     throw 'More than one function defined on ABI input.';
 
-                // fn.OutputParams = {};
+                output.OutputParams = [];
 
-                // for (p of out_parts) {
-                //     p_parts = p.split(':');
-                //     if (p_parts.length === 1 && p_parts[0] !== 'void') {
-                //         throw 'Unrecognized syntax on left side of function definition (' + p + ').';
-                //     }
+                for (p of out_parts) {
+                    p_parts = p.split(':');
+                    if (p_parts.length === 1 && p_parts[0] !== 'void') {
+                        throw 'Unrecognized syntax on left side of function definition (' + p + ').';
+                    }
 
-                //     if (p_parts[1] === 'fn') {
-                //         fn.FunctionName = p_parts[0];
-                //     }
-                //     else if (p === 'void') {
-                //         fn.OutputParams['void'] = 'void';
-                //     }
-                //     else {
-                //         if (!this.TypeMap[p_parts[1]]) {
-                //             throw 'Unknown output type (' + p + ').';
-                //         }
+                    if (this.ValidTypes.indexOf(p_parts[1]) == -1) {
+                        throw 'Unknown output type (' + p + ').';
+                    }
 
-                //         fn.OutputParams[p_parts[0]] = this.TypeMap[p_parts[1]];
+                    output.OutputParams.push({ Val: p_parts[0], Type: p_parts[1] });
 
-                //     }
-
-                // }
-
-                //output.Functions.push(fn);
+                }
 
             }
         }
@@ -115,6 +115,115 @@ var ABIdatagen = {
             }
         }
         return output;
+    },
+
+    EncodeValue: function (type, value) {
+        var ret = '';
+        if (type.indexOf('int') >= 0) {
+            if (type.indexOf('[]') == -1) { //single value
+                ret = this.EncodeNumber(type, value);
+            }
+            else {
+                var t = type.replace('[]', '');
+                value = value.replace('[', '').replace(']', '');
+                var nums = value.split(',');
+                for (var i = 0; i < nums.length; i++) {
+                    ret += this.EncodeNumber(t, nums[i].trim());
+                }
+            }
+        }
+        else if (type == 'fn') {
+            
+        }
+        else if (type == 'UniversalAddress') {
+            
+        }
+        else {
+            throw `Type not recognized (${type}).`;
+        }
+
+        return this.EncodeNumber('uint16', ret.length / 2) + ret;
+    },
+
+    EncodeNumber: function (type, value) {
+        if (typeof(value)=='string' && value.indexOf('0x') == 0)
+            value = parseInt(value, 16);
+        
+        var min = 0, max = 0;
+        var bits = parseInt(type.substr(type.indexOf('int') == 0 ? 3 : 4), 10);
+        
+        if (type.indexOf('uint') == 0) {
+            max = Math.pow(2, bits) - 1;
+        }
+        else {
+            min = -1 * Math.pow(2, bits - 1);
+            max = Math.pow(2, bits - 1) - 1;
+        }
+        
+        if (value < min || value > max) {
+            throw `Value out of range of type ${type}: ${value}.`;
+        }
+
+        var result = '';
+        if (value < 0) {
+            var v2 = value + 1;
+            var v3 = Math.pow(2, bits - 1) + -v2;
+            result= v3.toString(16).padStart(bits / 4, '0');
+        }
+        else {
+            result= value.toString(16).padStart(bits / 4, '0');
+        }
+
+        var l = result.length, ret='';
+
+        for (var i = l - 2; i >= 0; i -= 2){
+            ret += result.substr(i, 2);
+        }
+
+        return ret;
+    },
+
+    GetFunctionID: function (abi) {
+        var funcStr = '', fn;
+        for (i of abi.InputParams) {
+            if (i.Type == 'fn')
+                fn = i;
+            else {
+                funcStr += i.Type + ' ';
+            }
+        }
+        funcStr += abi.ContractName + '_' + fn.Val + ' -> ';
+        for (o of abi.OutputParams) {
+            funcStr += o.Type + ' ';
+        }
+        funcStr = funcStr.trim();
+
+        var sha256 = new jsSHA('SHA-256', 'TEXT');
+        sha256.update(funcStr);
+        var hash = sha256.getHash("HEX");
+
+        return '0400' + hash.substr(hash.length-4);
+
+    },
+
+    EncodeUA: function (UA) {
+
+        var s = base58.decode(UA);
+        var r = '';
+        for (var i = 0; i < s.length; i++) {
+            var v;
+            if (s[i] < 0)
+                s[i] += 256;
+            v = s[i].toString(16);
+            if (v.length == 1)
+                v = '0' + v;
+            r += v;
+        }
+
+        var version = parseInt(r.substr(0, 2), 16), payload = r.substr(2, r.length - 10);
+
+        return '1800' + this.EncodeNumber('uint32', this.VersionMap[version]) + payload;
+
     }
 
 
