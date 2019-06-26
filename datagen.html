@@ -106,6 +106,14 @@
             margin-top:0.3em;
             font-size:0.9em;
             color:#606060;
+            font-family:'Courier New', Courier, monospace;
+            word-wrap:break-word;
+        }
+
+        p#output_data {
+            margin-top:0.5em;
+            font-family:'Courier New', Courier, monospace;
+            word-wrap:break-word;
         }
 
     </style>
@@ -131,7 +139,7 @@ arg1:uint8 arg2:uint32[] argUA:UniversalAddress SimpleFun:fn -> ret1:uint8
 }
 </textarea>
 
-        <h2>Params</h2>
+        <h3>Params</h3>
         <label id="lblABIName">ABI name:</label>
         <input id="txtABIName" type="text" />
 
@@ -139,6 +147,8 @@ arg1:uint8 arg2:uint32[] argUA:UniversalAddress SimpleFun:fn -> ret1:uint8
 
             
         </ul>
+        <h3>Output data block</h3>
+        <p id="output_data"></p>
     </main>
 
 
@@ -285,6 +295,8 @@ arg1:uint8 arg2:uint32[] argUA:UniversalAddress SimpleFun:fn -> ret1:uint8
 
             
             });
+
+            $('#output_data').html(ABIdatagen.GetData(txtABI.value, txtData.value));
         }
 
         function myhash() {

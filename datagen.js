@@ -224,6 +224,35 @@ var ABIdatagen = {
 
         return '1800' + this.EncodeNumber('uint32', this.VersionMap[version]) + payload;
 
+    },
+
+    GetData: function (abiStr, dataStr) {
+        var abi = this.ParseContract(abiStr);
+        var data = this.ParseData(dataStr);
+        var result = '', t;
+
+        for (i of abi.InputParams) {
+            console.log(i);
+            if (i.Type == 'fn') { }
+            else if (i.Type == 'UniversalAddress') {
+                for (d of data) {
+                    if (d.Param == i.Val)
+                        t = d.Val;
+                }
+                result += this.EncodeUA(t);
+            }
+            else {
+                for (d of data) {
+                    if (d.Param == i.Val)
+                        t = d.Val;
+                }
+                result += this.EncodeValue(i.Type, t);
+            }
+            console.log(result);
+        }
+
+        result += this.GetFunctionID(abi);
+        return result;
     }
 
 
