@@ -293,18 +293,16 @@ arg1:uint8 arg2:uint32[] argUA:UniversalAddress SimpleFun:fn -> ret1:uint8
                 }
                $(this).find('p.encoded').html(val);
 
-            
             });
 
-            $('#output_data').html(ABIdatagen.GetData(txtABI.value, txtData.value));
+            
+            try{
+                $('#output_data').html(ABIdatagen.GetData(txtABI.value, txtData.value));
+            }
+            catch(e) {
+                $('#output_data').html(e);
+            }
         }
-
-        function myhash() {
-                var sha256 = new jsSHA('SHA-256', 'TEXT');
-                sha256.update('some_string_variable_to_hash');
-                var hash = sha256.getHash("HEX");
-        }
-
         
     </script>
 </body>
