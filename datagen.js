@@ -19,7 +19,7 @@ var ABIdatagen = {
         'int64[]',
         'char[]',
         'fn',
-        'UniversalAddress'
+        'uniaddress'
     ],
 
     VersionMap: {
@@ -132,12 +132,6 @@ var ABIdatagen = {
                 }
             }
         }
-        else if (type == 'fn') {
-            
-        }
-        else if (type == 'UniversalAddress') {
-            
-        }
         else {
             throw `Type not recognized (${type}).`;
         }
@@ -183,6 +177,11 @@ var ABIdatagen = {
         return ret;
     },
 
+    //:name=TestContract
+
+    //foo: uint32 whateverFunction: fn -> biz: uint8
+    //0xe9e0daef
+
     GetFunctionID: function (abi) {
         var funcStr = '', fn;
         for (i of abi.InputParams) {
@@ -197,13 +196,16 @@ var ABIdatagen = {
             funcStr += o.Type + ' ';
         }
         funcStr = funcStr.trim();
+        console.log(funcStr);
 
         var sha256 = new jsSHA('SHA-256', 'TEXT');
         sha256.update(funcStr);
         var hash = sha256.getHash("HEX");
 
-        return '0400' + hash.substr(hash.length-4);
+        console.log(hash);
 
+        return '0400' + hash.substr(6, 2) + hash.substr(4, 2) + hash.substr(2, 2) + hash.substr(0, 2);
+        //return '0400' + hash.substr(0, 8);
     },
 
     EncodeUA: function (UA) {
@@ -234,7 +236,7 @@ var ABIdatagen = {
         for (i of abi.InputParams) {
             console.log(i);
             if (i.Type == 'fn') { }
-            else if (i.Type == 'UniversalAddress') {
+            else if (i.Type == 'uniaddress') {
                 for (d of data) {
                     if (d.Param == i.Val)
                         t = d.Val;
