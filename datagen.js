@@ -36,7 +36,6 @@ var ABIdatagen = {
     ParseContract: function (contractText) {
         var lines = contractText.split('\n');
         var output = {};
-        //output.Functions = [];
 
         for (l of lines) {
             if (l.trim().indexOf(':name=') === 0) {
@@ -177,11 +176,6 @@ var ABIdatagen = {
         return ret;
     },
 
-    //:name=TestContract
-
-    //foo: uint32 whateverFunction: fn -> biz: uint8
-    //0xe9e0daef
-
     GetFunctionID: function (abi) {
         var funcStr = '', fn;
         for (i of abi.InputParams) {
@@ -196,21 +190,54 @@ var ABIdatagen = {
             funcStr += o.Type + ' ';
         }
         funcStr = funcStr.trim();
-        console.log(funcStr);
 
-        var sha256 = new jsSHA('SHA-256', 'TEXT');
-        sha256.update(funcStr);
-        var hash = sha256.getHash("HEX");
-
-        console.log(hash);
+        var hash = this.GetSHA256(funcStr);
 
         return '0400' + hash.substr(6, 2) + hash.substr(4, 2) + hash.substr(2, 2) + hash.substr(0, 2);
-        //return '0400' + hash.substr(0, 8);
+    },
+
+    GetSHA256: function (input) {
+        var sha256 = new jsSHA('SHA-256', 'TEXT');
+        sha256.update(input);
+        var hash = sha256.getHash("HEX");
+        return hash;
+    },
+
+    GetSHA256Hex: function (input) {
+        var sha256 = new jsSHA('SHA-256', 'HEX');
+        sha256.update(input);
+        var hash = sha256.getHash("HEX");
+        return hash;
     },
 
     EncodeUA: function (UA) {
+        var r = '';
+        try {
+            r = this.Base58Decode(UA);
+        }
+        catch (e) {
+            throw 'Error decoding UA: ' + e;
+        }
 
-        var s = base58.decode(UA);
+        if (r.length != 50) {
+            throw 'Decoded UA incorrect length. Expected 50, got ' + r.length;
+        }
+
+        var version = r.substr(0, 2), payload = r.substr(2, r.length - 10), checksum = r.substr(r.length - 8);
+        var checkStr = (version < 16 ? '0' : '') + version + payload;
+        
+        var check = this.GetSHA256Hex(this.GetSHA256Hex(checkStr)).substr(0,8);
+
+        if(checksum!=check){
+            throw `UA checksum mismatch: expected '${check}', found '${checksum}'`;
+        }
+        
+        return '1800' + this.EncodeNumber('uint32', this.VersionMap[parseInt(version, 16)]) + payload;
+
+    },
+
+    Base58Decode: function (inputStr) {
+        var s = base58.decode(inputStr);
         var r = '';
         for (var i = 0; i < s.length; i++) {
             var v;
@@ -221,11 +248,7 @@ var ABIdatagen = {
                 v = '0' + v;
             r += v;
         }
-
-        var version = parseInt(r.substr(0, 2), 16), payload = r.substr(2, r.length - 10);
-
-        return '1800' + this.EncodeNumber('uint32', this.VersionMap[version]) + payload;
-
+        return r;
     },
 
     GetData: function (abiStr, dataStr) {
@@ -234,7 +257,6 @@ var ABIdatagen = {
         var result = '', t;
 
         for (i of abi.InputParams) {
-            console.log(i);
             if (i.Type == 'fn') { }
             else if (i.Type == 'uniaddress') {
                 for (d of data) {
@@ -250,7 +272,6 @@ var ABIdatagen = {
                 }
                 result += this.EncodeValue(i.Type, t);
             }
-            console.log(result);
         }
 
         result += this.GetFunctionID(abi);

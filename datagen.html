@@ -246,8 +246,16 @@ arg1:uint8 arg2:uint32[] argUA:uniaddress SimpleFun:fn -> ret1:uint8
         }
 
         function UpdateData(abi) {
-            if(abi==undefined)
-                UpdateABI();
+            if(abi==undefined){
+                            try {
+                    abi = ABIdatagen.ParseContract(txtABI.value);
+                }
+                catch (e) {
+                    $('#abi_feedback').html(e);
+                    return;
+                }
+            }
+                
             var data = ABIdatagen.ParseData(txtData.value);
             console.log(abi);
             console.log(data);
@@ -262,7 +270,12 @@ arg1:uint8 arg2:uint32[] argUA:uniaddress SimpleFun:fn -> ret1:uint8
                     for (d of data) {
                         if (d.Param == $(this).find('input.arg').val()) {
                             $(this).find('input.param_val').val(d.Val);
-                            val=ABIdatagen.EncodeUA(d.Val);
+                            try{
+                                val=ABIdatagen.EncodeUA(d.Val);
+                            }
+                            catch(ex) {
+                                val=ex;
+                            }
                         }
                     }
 
