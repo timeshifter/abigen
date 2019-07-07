@@ -235,40 +235,37 @@ arg1:uint8 arg2:uint32[] argUA:uniaddress SimpleFun:fn -> ret1:uint8
 							t=i.Type;
 							break;
 						}
-						
 					}
 
 					if(t==''){
 						isError=true;
-						msg=`Input argument with name '${parts[0].trim()}' not found in ABI.`;
+						if(parts[0].trim().indexOf('_')==0){
+							if(parts[0].trim()!='_function') {
+								msg="Unknown identifier '" + parts[0].trim() + "'.";
+							}
+							else{
+								msg = `Input function with name '${parts[1].trim()}' not found in ABI.`;
+							}
+						}
+						else{
+							msg=`Input argument with name '${parts[0].trim()}' not found in ABI.`;
+						}
 					}
 					else{
-						if(t=='fn'){
-							try{
+						try{
+							if(t=='fn'){
 								msg=ABIdatagen.GetFunctionID(abi);
 							}
-							catch(e){
-								isError=true;
-								msg=e;
-							}
-						}
-						else if(t=='uniaddress'){
-							try {
+							else if(t=='uniaddress'){
 								msg = ABIdatagen.EncodeUA(parts[1].trim());
 							}
-							catch (e) {
-								isError = true;
-								msg = e;
-							}
-						}
-						else {
-							try {
+							else{
 								msg = ABIdatagen.EncodeValue(t, parts[1].trim());
 							}
-							catch (e) {
-								isError = true;
-								msg = e;
-							}
+						}
+						catch(e){
+							isError=true;
+							msg=e;
 						}
 						
 					}
