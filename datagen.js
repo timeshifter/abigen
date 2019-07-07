@@ -139,8 +139,15 @@ var ABIdatagen = {
     },
 
     EncodeNumber: function (type, value) {
-        if (typeof(value)=='string' && value.indexOf('0x') == 0)
-            value = parseInt(value, 16);
+        if (typeof (value) == 'string') {
+            if (value.indexOf('0x') == 0) {
+                value = parseInt(value, 16);
+            }
+            else {
+                value = parseInt(value, 10);
+            }
+
+        }
         
         var min = 0, max = 0;
         var bits = parseInt(type.substr(type.indexOf('int') == 0 ? 3 : 4), 10);
