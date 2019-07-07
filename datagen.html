@@ -72,43 +72,35 @@
             font-size:0.9em;
         }
 
-        ul#params {
-            margin-top:1em;
-        }
+		#data_container {
+			position:relative;
+		}
 
-        ul#params li {
-            margin-bottom:0.4em;
-        }
+		#txtData {
+			min-height:140px;
+			line-height:2.2em;
+		}
 
-        ul#params li input {
-            border-radius:0.25em;
-            border:1px solid #70a0ff;
-            width:130px;
-            padding:0.3em;
-            font-size:0.9em;
-        }
+		ul#data_params {
+			position:absolute;
+			top:0.8em;
+			left:70px;
+		}
 
-        ul#params li select {
-            border-radius:0.25em;
-            border:1px solid #70a0ff;
-            width:150px;
-            padding:0.25em;
-            font-size:0.9em;
-        }
-
-        ul#params input.param_val {
-            width:50%;
-        }
-
-        ul#params p.encoded {
-            width:50%;
-            margin-left:290px;
-            margin-top:0.3em;
-            font-size:0.9em;
-            color:#606060;
+		ul#data_params li {
+			/*margin-top:1.0em;*/
+			display:block;
+			height:1.0em;
+			font-size:0.8em;
+			color:#808080;
             font-family:'Courier New', Courier, monospace;
-            word-wrap:break-word;
-        }
+			position:absolute;
+			white-space: nowrap;
+		}
+
+		ul#data_params li.error {
+			color:red;
+		}
 
         p#output_data {
             margin-top:0.5em;
@@ -129,8 +121,9 @@ arg1:uint8 arg2:uint32[] argUA:uniaddress SimpleFun:fn -> ret1:uint8
 </textarea>
         <p id="abi_feedback"></p>
         <h3>Data:</h3>
-        <p class="info">Paste a data string here to validate and encode, otherwise skip this and enter data manually below.</p>
-        <textarea id="txtData" rows="6" oninput="UpdateData();" onblur="UpdateData();">
+		<p class="info">Paste a data string here to validate and encode.</p>
+		<div id="data_container">
+        <textarea id="txtData" spellcheck="false" oninput="UpdateData();" onblur="UpdateData();">
 {
     arg1: 0x20
     arg2: [0x11223344, 0xdeadbeef, 0xffeeddcc]
@@ -138,20 +131,13 @@ arg1:uint8 arg2:uint32[] argUA:uniaddress SimpleFun:fn -> ret1:uint8
     _function: SimpleFun
 }
 </textarea>
+		<ul id="data_params">
 
-        <h3>Params</h3>
-        <label id="lblABIName">ABI name:</label>
-        <input id="txtABIName" type="text" />
-
-        <ul id="params">
-
-            
-        </ul>
+		</ul>
+</div>
         <h3>Output data block</h3>
         <p id="output_data"></p>
     </main>
-
-
 
     <script src="datagen.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
@@ -185,26 +171,17 @@ arg1:uint8 arg2:uint32[] argUA:uniaddress SimpleFun:fn -> ret1:uint8
                 <p class="encoded"></p>
             </li>`;
 
+		var abi, data;
+
         $(function() {
-
-            $('#params').on('change', 'select', function() {
-                if($(this).val()=='fn'){
-                    $(this).parent().find('input.param_val').hide();
-                }
-                else{
-                    $(this).parent().find('input.param_val').show();
-                }
-            });
-
-
             UpdateABI();
         });
 
 
 
         function UpdateABI() {
+			console.log('abi update');
             $('#abi_feedback').html('');
-            var abi;
             try{
                 abi = ABIdatagen.ParseContract(txtABI.value);
             }
@@ -212,101 +189,146 @@ arg1:uint8 arg2:uint32[] argUA:uniaddress SimpleFun:fn -> ret1:uint8
                 $('#abi_feedback').html(e);
                 return;
             }
+			UpdateData();
             
-            txtABIName.value = abi.ContractName;
-
-            var liIdx=0;
-            $('#params').html('');
-
-
-
-            for(var i = 0;i<abi.InputParams.length;i++){
-
-                if($('#params li').length>liIdx){
-
-
-                }
-                else{
-                    var $li = $(param_template);
-                    $li.find('select').val(abi.InputParams[i].Type);
-                    $li.find('input.arg').val(abi.InputParams[i].Val);
-
-                    if(abi.InputParams[i].Type=='fn')
-                        $li.find('input.param_val').hide();
-
-                    $('#params').append($li);
-                }
-
-                
-                liIdx++;
-            }
-
-            UpdateData(abi);
-
         }
 
-        function UpdateData(abi) {
-            if(abi==undefined){
-                            try {
-                    abi = ABIdatagen.ParseContract(txtABI.value);
-                }
-                catch (e) {
-                    $('#abi_feedback').html(e);
-                    return;
-                }
-            }
+        function UpdateData() {
+
+			if(txtData.scrollHeight > txtData.clientHeight){
+				txtData.style["height"] = (txtData.scrollHeight + 2) + 'px';
+			}
+
+			if (abi == undefined) {
+				console.log('how the f*ck did you even get here...');
+
+				try {
+					abi = ABIdatagen.ParseContract(txtABI.value);
+				}
+				catch (e) {
+					$('#abi_feedback').html(e);
+					return;
+				}
+			}
                 
-            var data = ABIdatagen.ParseData(txtData.value);
+            data = ABIdatagen.ParseData(txtData.value);
             console.log(abi);
-            console.log(data);
-            $('#params li').each(function() {
+			console.log(data);
+			
+			var lines = txtData.value.split('\n');
+			//console.log(lines);
 
-                var val;
+			var ul_output='', idx=0;
+			for(l of lines){
+				l=l.trim();
+				var isError=false, msg='';
+				if(l=='' || l=='{' || l=='}'){
+					
+				}
+				else {
+					var parts = l.split(':'), t='';
 
-                if($(this).find('select').val()=='fn'){
-                    val = ABIdatagen.GetFunctionID(abi);
-                }
-                else if($(this).find('select').val()=='uniaddress'){
-                    for (d of data) {
-                        if (d.Param == $(this).find('input.arg').val()) {
-                            $(this).find('input.param_val').val(d.Val);
-                            try{
-                                val=ABIdatagen.EncodeUA(d.Val);
-                            }
-                            catch(ex) {
-                                val=ex;
-                            }
-                        }
-                    }
+					for(i of abi.InputParams){
+						if((parts[0].trim()==i.Val)
+							|| (parts[0].trim() == '_function' && parts[1].trim() == i.Val))
+						{
+							t=i.Type;
+							break;
+						}
+						
+					}
 
-                }
-                else{
-                    for (d of data) {
-                        if (d.Param == $(this).find('input.arg').val()) {
-                            $(this).find('input.param_val').val(d.Val);
+					if(t==''){
+						isError=true;
+						msg=`Input argument with name '${parts[0].trim()}' not found in ABI.`;
+					}
+					else{
+						if(t=='fn'){
+							try{
+								msg=ABIdatagen.GetFunctionID(abi);
+							}
+							catch(e){
+								isError=true;
+								msg=e;
+							}
+						}
+						else if(t=='uniaddress'){
+							try {
+								msg = ABIdatagen.EncodeUA(parts[1].trim());
+							}
+							catch (e) {
+								isError = true;
+								msg = e;
+							}
+						}
+						else {
+							try {
+								msg = ABIdatagen.EncodeValue(t, parts[1].trim());
+							}
+							catch (e) {
+								isError = true;
+								msg = e;
+							}
+						}
+						
+					}
 
-                            var t='';
-                            for(i of abi.InputParams){
-                                if(i.Val==d.Param){
-                                    t=i.Type;
-                                    break;
-                                }
-                            }  
-                            try{
-                                val = ABIdatagen.EncodeValue(t, d.Val)     
-                            }
-                            catch(ex) {
-                                val=ex;
-                            }
-                        }
-                    }
+				}
+
+				ul_output+=`<li${isError? ' class="error"' : ''} style="top:${1.2 + (idx*2.5)}em">${msg}</li>`;
+				idx++;
+			}
+
+			$('#data_params').html(ul_output);
+
+            // $('#params li').each(function() {
+
+            //     var val;
+
+            //     if($(this).find('select').val()=='fn'){
+            //         val = ABIdatagen.GetFunctionID(abi);
+            //     }
+            //     else if($(this).find('select').val()=='uniaddress'){
+            //         for (d of data) {
+            //             if (d.Param == $(this).find('input.arg').val()) {
+            //                 $(this).find('input.param_val').val(d.Val);
+            //                 try{
+            //                     val=ABIdatagen.EncodeUA(d.Val);
+            //                 }
+            //                 catch(ex) {
+            //                     val=ex;
+            //                 }
+            //             }
+            //         }
+
+            //     }
+            //     else{
+            //         for (d of data) {
+            //             if (d.Param == $(this).find('input.arg').val()) {
+            //                 $(this).find('input.param_val').val(d.Val);
+
+            //                 var t='';
+            //                 for(i of abi.InputParams){
+            //                     if(i.Val==d.Param){
+            //                         t=i.Type;
+            //                         break;
+            //                     }
+            //                 }  
+            //                 try{
+            //                     val = ABIdatagen.EncodeValue(t, d.Val)     
+            //                 }
+            //                 catch(ex) {
+            //                     val=ex;
+            //                 }
+            //             }
+            //         }
 
 
 
-                }
-               $(this).find('p.encoded').html(val);
+            //     }
+            //    $(this).find('p.encoded').html(val);
 
-            });
+            // });
 
             
             try{
