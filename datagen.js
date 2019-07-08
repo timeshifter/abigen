@@ -118,6 +118,9 @@ var ABIdatagen = {
 
     EncodeValue: function (type, value) {
         var ret = '';
+        if (value.trim() == '' || value.trim()=='0x') {
+            throw "Value required.";
+        }
         if (type.indexOf('int') >= 0) {
             if (type.indexOf('[]') == -1) { //single value
                 ret = this.EncodeNumber(type, value);
@@ -219,6 +222,10 @@ var ABIdatagen = {
 
     EncodeUA: function (UA) {
         var r = '';
+        if (UA.trim() == '') {
+            throw 'Value required.';
+        }
+
         try {
             r = this.Base58Decode(UA);
         }
@@ -264,11 +271,15 @@ var ABIdatagen = {
         var result = '', t;
 
         for (i of abi.InputParams) {
+            t = undefined;
             if (i.Type == 'fn') { }
             else if (i.Type == 'uniaddress') {
                 for (d of data) {
                     if (d.Param == i.Val)
                         t = d.Val;
+                }
+                if (t == undefined || t.trim()=='') {
+                    throw `No value provided for parameter '${i.Val}'.`;
                 }
                 result += this.EncodeUA(t);
             }
@@ -276,6 +287,9 @@ var ABIdatagen = {
                 for (d of data) {
                     if (d.Param == i.Val)
                         t = d.Val;
+                }
+                if (t == undefined || t.trim()=='' || t.trim()=='0x') {
+                    throw `No value provided for parameter '${i.Val}'.`;
                 }
                 result += this.EncodeValue(i.Type, t);
             }

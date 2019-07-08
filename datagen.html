@@ -200,8 +200,6 @@ arg1:uint8 arg2:uint32[] argUA:uniaddress SimpleFun:fn -> ret1:uint8
 			}
 
 			if (abi == undefined) {
-				console.log('how the f*ck did you even get here...');
-
 				try {
 					abi = ABIdatagen.ParseContract(txtABI.value);
 				}
@@ -212,8 +210,8 @@ arg1:uint8 arg2:uint32[] argUA:uniaddress SimpleFun:fn -> ret1:uint8
 			}
                 
             data = ABIdatagen.ParseData(txtData.value);
-            console.log(abi);
-			console.log(data);
+            //console.log(abi);
+			//console.log(data);
 			
 			var lines = txtData.value.split('\n');
 			//console.log(lines);
@@ -277,55 +275,6 @@ arg1:uint8 arg2:uint32[] argUA:uniaddress SimpleFun:fn -> ret1:uint8
 			}
 
 			$('#data_params').html(ul_output);
-
-            // $('#params li').each(function() {
-
-            //     var val;
-
-            //     if($(this).find('select').val()=='fn'){
-            //         val = ABIdatagen.GetFunctionID(abi);
-            //     }
-            //     else if($(this).find('select').val()=='uniaddress'){
-            //         for (d of data) {
-            //             if (d.Param == $(this).find('input.arg').val()) {
-            //                 $(this).find('input.param_val').val(d.Val);
-            //                 try{
-            //                     val=ABIdatagen.EncodeUA(d.Val);
-            //                 }
-            //                 catch(ex) {
-            //                     val=ex;
-            //                 }
-            //             }
-            //         }
-
-            //     }
-            //     else{
-            //         for (d of data) {
-            //             if (d.Param == $(this).find('input.arg').val()) {
-            //                 $(this).find('input.param_val').val(d.Val);
-
-            //                 var t='';
-            //                 for(i of abi.InputParams){
-            //                     if(i.Val==d.Param){
-            //                         t=i.Type;
-            //                         break;
-            //                     }
-            //                 }  
-            //                 try{
-            //                     val = ABIdatagen.EncodeValue(t, d.Val)     
-            //                 }
-            //                 catch(ex) {
-            //                     val=ex;
-            //                 }
-            //             }
-            //         }
-
-
-
-            //     }
-            //    $(this).find('p.encoded').html(val);
-
-            // });
 
             
             try{
