@@ -5,138 +5,50 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>ABI Datagen</title>
-    <style> 
-        * {
-            margin:0; 
-            padding:0; 
-            outline:0; 
-            list-style: none; 
-            border:none; 
-            box-sizing: border-box; 
-            font-family:Arial, Helvetica, sans-serif; 
-            font-weight:normal;
-            font-size:16px;
-        }
-
-        main.container {
-            margin:0 auto;
-            max-width:1260px;
-        }
-
-        h1 {
-            margin:0.5em 0;
-            font-size:2em;
-        }
-
-        h2 {
-            font-size:1.6em;
-            margin-top:1em;
-        }
-
-        h3 {
-            font-size:1.2em;
-            margin-top:1em;
-            margin-bottom:0.2em;
-        }
-
-        textarea {
-            display:block;
-            width:80%;
-            border-radius:0.3em;
-            border:1px solid #70a0ff;
-            padding:0.3em;
-            font-family:'Courier New', Courier, monospace;
-            font-size:0.9em;
-        }
-
-        p.info {
-            font-size:0.9em;
-            color:#606060;
-            margin-bottom:0.2em;
-        }
-
-        p#abi_feedback {
-            color:red;
-        }
-
-        #lblABIName {
-            display:inline-block;
-            width:140px;
-        }
-
-         #txtABIName {
-            border-radius:0.25em;
-            border:1px solid #70a0ff;
-            width:250px;
-            padding:0.3em;
-            font-size:0.9em;
-        }
-
-		#data_container {
-			position:relative;
-		}
-
-		#txtData {
-			min-height:140px;
-			line-height:2.2em;
-		}
-
-		ul#data_params {
-			position:absolute;
-			top:0.8em;
-			left:70px;
-		}
-
-		ul#data_params li {
-			/*margin-top:1.0em;*/
-			display:block;
-			height:1.0em;
-			font-size:0.8em;
-			color:#808080;
-            font-family:'Courier New', Courier, monospace;
-			position:absolute;
-			white-space: nowrap;
-		}
-
-		ul#data_params li.error {
-			color:red;
-		}
-
-        p#output_data {
-            margin-top:0.5em;
-            font-family:'Courier New', Courier, monospace;
-            word-wrap:break-word;
-        }
-
-    </style>
+    <link rel="stylesheet" href="css/datagen.css">
 </head>
 <body>
+    <div id="nav">
+        <header>
+            <a href="https://qtum.info" >
+                <span class="qtum-icon"></span> qtum.info
+            </a>
+        </header>
+    </div>
     <main class="container">
-        <h1>ABI Datagen</h1>
-
-        <h3>ABI:</h3>
-        <textarea id="txtABI" rows="3" onchange="UpdateABI();" onblur="UpdateABI();">
+        <div class="card">
+            <div class="card-header">
+                <div class="card-header-title">
+                    ABI Data Validator
+                </div>
+            </div>
+            <div class="card-body">
+                <h3>ABI:</h3>
+                <textarea id="txtABI" rows="3" onchange="UpdateABI();" onblur="UpdateABI();">
 :name=ExampleABI
-arg1:uint8 arg2:uint32[] argUA:uniaddress SimpleFun:fn -> ret1:uint8
-</textarea>
-        <p id="abi_feedback"></p>
-        <h3>Data:</h3>
-		<p class="info">Paste a data string here to validate and encode.</p>
-		<div id="data_container">
-        <textarea id="txtData" spellcheck="false" oninput="UpdateData();" onblur="UpdateData();">
+arg1:uint8 arg2:uint32[] argUA:uniaddress SimpleFun:fn -> ret1:uint8</textarea>
+                <p id="abi_feedback"></p>
+                <h3>Data:</h3>
+                <p class="info">Paste a data string here to validate and encode.</p>
+                <div id="data_container">
+                    <textarea id="txtData" spellcheck="false" oninput="UpdateData();" onblur="UpdateData();">
 {
     arg1: 0x20
     arg2: [0x11223344, 0xdeadbeef, 0xffeeddcc]
     argUA: Qbf6sk8kydFLnikXGkSxKLcczNBwVgWwrR
     _function: SimpleFun
-}
-</textarea>
-		<ul id="data_params">
+}</textarea>
+                <ul id="data_params">
+                </ul>
+                </div>
+                <h3>Output data block</h3>
+                <p id="output_data"></p>   
 
-		</ul>
-</div>
-        <h3>Output data block</h3>
-        <p id="output_data"></p>
+            </div>
+         
+        </div>
+
+
     </main>
 
     <script src="datagen.js"></script>
