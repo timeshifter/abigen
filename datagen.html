@@ -6,6 +6,7 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>ABI Datagen</title>
     <link rel="stylesheet" href="css/datagen.css">
+    <link rel="stylesheet" href="css/all.min.css">
 </head>
 <body>
     <div id="nav">
@@ -45,10 +46,84 @@ arg1:uint8 arg2:uint32[] argUA:uniaddress SimpleFun:fn -> ret1:uint8</textarea>
                 <p id="output_data"></p>   
 
             </div>
-         
         </div>
-
-
+        <div class="card">
+            <div class="card-header">
+                <div class="card-header-title">
+                    ABI Generator
+                </div>
+            </div>
+            <div class="card-body">
+                <h3>Contract name:</h3>
+                <input type="text" id="txtContractName" oninput="UpdateGenerator();" onchange="UpdateGenerator();" />
+                <h3>Input parameters:</h3>
+                <ul class="generator input">
+                    <li>
+                        <a class="remove"><i class="far fa-trash-alt"></i></a>
+                        <input type="text" class="name" placeholder="Name" />
+                        <select class="type">
+                            <option>int8</option>
+                            <option>int16</option>
+                            <option>int32</option>
+                            <option>int64</option>
+                            <option>uint8</option>
+                            <option>uint16</option>
+                            <option>uint32</option>
+                            <option>uint64</option>
+                            <option>char</option>
+                            <option>int8[]</option>
+                            <option>int16[]</option>
+                            <option>int32[]</option>
+                            <option>int64[]</option>
+                            <option>uint8[]</option>
+                            <option>uint16[]</option>
+                            <option>uint32[]</option>
+                            <option>uint64[]</option>
+                            <option>char[]</option>
+                            <option>fn</option>
+                            <option>uniaddress</option>
+                        </select>
+                        <input type="text" class="val" placeholder="Value" />
+                    </li>
+                    
+                </ul>
+                <h3>Output parameters:</h3>
+                <ul class="generator output">
+                    <li>
+                        <a class="remove"><i class="far fa-trash-alt"></i></a>
+                        <input type="text" class="name" placeholder="Name" />
+                        <select class="type">
+                            <option>void</option>
+                            <option>int8</option>
+                            <option>int16</option>
+                            <option>int32</option>
+                            <option>int64</option>
+                            <option>uint8</option>
+                            <option>uint16</option>
+                            <option>uint32</option>
+                            <option>uint64</option>
+                            <option>char</option>
+                            <option>int8[]</option>
+                            <option>int16[]</option>
+                            <option>int32[]</option>
+                            <option>int64[]</option>
+                            <option>uint8[]</option>
+                            <option>uint16[]</option>
+                            <option>uint32[]</option>
+                            <option>uint64[]</option>
+                            <option>char[]</option>
+                            <option>fn</option>
+                            <option>uniaddress</option>
+                        </select>
+                    </li>
+                </ul>
+                <p id="output_feedback"></p>
+                <h3>Output ABI:</h3>
+                <textarea id="txtOutputABI" rows="2" readonly  spellcheck="false"></textarea>
+                <h3>Output data string:</h3>
+                <textarea id="txtOutputData" rows="5" readonly  spellcheck="false"></textarea>
+            </div>
+        </div>
     </main>
 
     <script src="datagen.js"></script>
@@ -56,43 +131,98 @@ arg1:uint8 arg2:uint32[] argUA:uniaddress SimpleFun:fn -> ret1:uint8</textarea>
 
     <script>
 
-        var param_template =
-`            <li>
-                <input type="text" class="arg" />
-                <select>
-                    <option>uint8</option>
-                    <option>uint16</option>
-                    <option>uint32</option>
-                    <option>uint64</option>
-                    <option>int8</option>
-                    <option>int16</option>
-                    <option>int32</option>
-                    <option>int64</option>
-                    <option>uint8[]</option>
-                    <option>uint16[]</option>
-                    <option>uint32[]</option>
-                    <option>uint64[]</option>
-                    <option>int8[]</option>
-                    <option>int16[]</option>
-                    <option>int32[]</option>
-                    <option>int64[]</option>
-                    <option value="fn">_function</option>
-                    <option>uniaddress</option>
-                </select>
-                <input type="text" class="param_val" />
-                <p class="encoded"></p>
-            </li>`;
+        var input_param_template =
+`                    <li>
+                        <a class="remove"><i class="far fa-trash-alt"></i></a>
+                        <input type="text" class="name" placeholder="Name" />
+                        <select class="type">
+                            <option>int8</option>
+                            <option>int16</option>
+                            <option>int32</option>
+                            <option>int64</option>
+                            <option>uint8</option>
+                            <option>uint16</option>
+                            <option>uint32</option>
+                            <option>uint64</option>
+                            <option>char</option>
+                            <option>int8[]</option>
+                            <option>int16[]</option>
+                            <option>int32[]</option>
+                            <option>int64[]</option>
+                            <option>uint8[]</option>
+                            <option>uint16[]</option>
+                            <option>uint32[]</option>
+                            <option>uint64[]</option>
+                            <option>char[]</option>
+                            <option>fn</option>
+                            <option>uniaddress</option>
+                        </select>
+                        <input type="text" class="val" placeholder="Value" />
+                    </li>
+`;
 
-		var abi, data;
+            var output_param_template =
+`                    <li>
+                        <a class="remove"><i class="far fa-trash-alt"></i></a>
+                        <input type="text" class="name" placeholder="Name" />
+                        <select class="type">
+                            <option>void</option>
+                            <option>int8</option>
+                            <option>int16</option>
+                            <option>int32</option>
+                            <option>int64</option>
+                            <option>uint8</option>
+                            <option>uint16</option>
+                            <option>uint32</option>
+                            <option>uint64</option>
+                            <option>char</option>
+                            <option>int8[]</option>
+                            <option>int16[]</option>
+                            <option>int32[]</option>
+                            <option>int64[]</option>
+                            <option>uint8[]</option>
+                            <option>uint16[]</option>
+                            <option>uint32[]</option>
+                            <option>uint64[]</option>
+                            <option>char[]</option>
+                            <option>fn</option>
+                            <option>uniaddress</option>
+                        </select>
+                    </li>
+`;
 
+
+
+        var abi, data;
+        
         $(function() {
+            $('body').on('input,change', 'textarea', function() {
+                if($(this)[0].scrollHeight > $(this)[0].clientHeight) {
+                    $(this).css('height', ($(this)[0].scrollHeight+2) + 'px');
+                }
+            });
+
             UpdateABI();
+
+            $('ul.generator').on('input', 'input.name', function() {
+                var s = $(this).closest('.generator').is('.input') ? input_param_template : output_param_template;
+                if($(this).closest('li').is(':last-child')){
+                    $(this).closest('.generator').append(s);
+                }
+            });
+
+            $('ul.generator').on('click', 'a.remove', function() {
+                $(this).closest('li').remove();
+            });
+
+            $('ul.generator').on('input', 'input,select', UpdateGenerator);
+
+
         });
 
 
 
         function UpdateABI() {
-			console.log('abi update');
             $('#abi_feedback').html('');
             try{
                 abi = ABIdatagen.ParseContract(txtABI.value);
@@ -197,6 +327,60 @@ arg1:uint8 arg2:uint32[] argUA:uniaddress SimpleFun:fn -> ret1:uint8</textarea>
             }
         }
         
+
+        function UpdateGenerator() {
+            output_feedback.innerHTML='';
+            txtOutputABI.value='';
+            txtOutputData.value='';
+
+            var feedback = '', abiStr='', dataStr=`{\n`;
+
+            if (txtContractName.value.trim() == '') {
+                feedback += 'Contract Name is required.';
+            }
+            else{
+                abiStr = `:name=${txtContractName.value}\n`;
+            }
+
+
+            $('ul.generator.input li').each(function() {
+                if($(this).find('input.name').val().trim()!=''){
+                    abiStr += $(this).find('input.name').val() + ':' + $(this).find('select').val() + ' ';
+                    if($(this).find('select').val()=='fn'){
+                        dataStr += `\t_function: ${$(this).find('input.name').val()}\n`;
+                    }
+                    else{
+                        dataStr += `\t` + $(this).find('input.name').val() + ': ' + $(this).find('input.val').val() + `\n`;
+                    }
+                }
+
+            });
+
+            abiStr += '-> ';
+            dataStr += '}';
+
+            $('ul.generator.output li').each(function() {
+                if($(this).find('input.name').val().trim()!='' || $(this).find('select').val() == 'void'){
+                    if($(this).find('select').val()=='void'){
+                        abiStr+='void';
+                    }
+                    else{
+                        abiStr += $(this).find('input.name').val() + ':' + $(this).find('select').val() + ' ';
+                    }
+                }
+            })
+
+            if (feedback != '') {
+                $('#output_feedback').html(feedback);
+                return;
+            }
+
+            txtOutputABI.value = abiStr;
+            txtOutputData.value=dataStr;
+            $('#txtOutputData').change();
+        }
+
+
     </script>
 </body>
 </html>

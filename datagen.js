@@ -19,7 +19,8 @@ var ABIdatagen = {
         'int64[]',
         'char[]',
         'fn',
-        'uniaddress'
+        'uniaddress',
+        'void'
     ],
 
     VersionMap: {
@@ -84,7 +85,7 @@ var ABIdatagen = {
                         throw 'Unrecognized syntax on left side of function definition (' + p + ').';
                     }
 
-                    if (this.ValidTypes.indexOf(p_parts[1]) == -1) {
+                    if (this.ValidTypes.indexOf(p_parts[1]) == -1 && p_parts[0] !== 'void') {
                         throw 'Unknown output type (' + p + ').';
                     }
 

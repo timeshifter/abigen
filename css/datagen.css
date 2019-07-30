@@ -82,7 +82,8 @@ main.container {
 	box-shadow: 0 2px 3px rgba(10,10,10,.1),0 0 0 1px rgba(10,10,10,.1);
 	color: #4a4a4a;
 	max-width: 100%;
-	position: relative;
+    position: relative;
+    margin-bottom:1.5rem;
 }
 
 .card-header {
@@ -120,10 +121,42 @@ textarea:focus {
     border-color:#3273dc;
 }
 
+input[type="text"] {
+    border:1px solid #4a4a4a;
+    padding:0.25em;
+    font-family:'Courier New', Courier, monospace;
+    font-size:0.9em;
+    box-shadow:inset 0 0 4px #e0e0e0;
+    display:inline-block;
+    margin:0.5em 0 1em;
+}
+
+input[type="text"]:focus {
+    border-color:#3273dc;
+}
+
+select {
+    border:1px solid #4a4a4a;
+    padding:0.18em;
+    font-family:'Courier New', Courier, monospace;
+    font-size:0.9em;
+    box-shadow:inset 0 0 4px #e0e0e0;
+    display:inline-block;
+    margin:0.5em 0 1em;
+}
+
+select:focus {
+    border-color:#3273dc;
+}
+
 p.info {
     font-size:0.9em;
     color:#606060;
     margin-bottom:0.2em;
+}
+
+p#abi_feedback {
+    color:red;
 }
 
 #data_container {
@@ -161,6 +194,24 @@ p#output_data {
     font-family:'Courier New', Courier, monospace;
     word-wrap:break-word;
 }
+
+p#output_feedback {
+    color:red;
+    margin-bottom:0.5rem;
+}
+
+a.remove {
+    cursor:pointer;
+}
+
+ul.generator li:only-child a.remove, ul.generator li:last-child a.remove {
+    visibility: hidden;
+}
+
+ul.generator input.val {
+    width: 60%;
+}
+
 
 @media screen and (max-width:1384px) {
     header {
