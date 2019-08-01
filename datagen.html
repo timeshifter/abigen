@@ -17,7 +17,7 @@
         </header>
     </div>
     <main class="container">
-        <div class="card">
+        <div class="card" id="validator">
             <div class="card-header">
                 <div class="card-header-title">
                     ABI Data Validator
@@ -42,12 +42,12 @@ arg1:uint8 arg2:uint32[] argUA:uniaddress SimpleFun:fn -> ret1:uint8</textarea>
                 <ul id="data_params">
                 </ul>
                 </div>
-                <h3>Output data block</h3>
-                <p id="output_data"></p>   
+                <h3>Output encoded data</h3>
+                <textarea id="txtOutputData1" rows="4" readonly spellcheck="false"></textarea>
 
             </div>
         </div>
-        <div class="card">
+        <div class="card" id="generator">
             <div class="card-header">
                 <div class="card-header-title">
                     ABI Generator
@@ -84,6 +84,7 @@ arg1:uint8 arg2:uint32[] argUA:uniaddress SimpleFun:fn -> ret1:uint8</textarea>
                             <option>uniaddress</option>
                         </select>
                         <input type="text" class="val" placeholder="Value" />
+                        <p class="feedback"></p>
                     </li>
                     
                 </ul>
@@ -118,10 +119,12 @@ arg1:uint8 arg2:uint32[] argUA:uniaddress SimpleFun:fn -> ret1:uint8</textarea>
                     </li>
                 </ul>
                 <p id="output_feedback"></p>
-                <h3>Output ABI:</h3>
+                <h3>Output ABI</h3>
                 <textarea id="txtOutputABI" rows="2" readonly  spellcheck="false"></textarea>
-                <h3>Output data string:</h3>
+                <h3>Output data string</h3>
                 <textarea id="txtOutputData" rows="5" readonly  spellcheck="false"></textarea>
+                <h3>Output encoded data</h3>
+                <textarea id="txtWizardOutputData" rows="4" readonly spellcheck="false"></textarea>
             </div>
         </div>
     </main>
@@ -158,6 +161,7 @@ arg1:uint8 arg2:uint32[] argUA:uniaddress SimpleFun:fn -> ret1:uint8</textarea>
                             <option>uniaddress</option>
                         </select>
                         <input type="text" class="val" placeholder="Value" />
+                        <p class="feedback"></p>
                     </li>
 `;
 
@@ -213,6 +217,7 @@ arg1:uint8 arg2:uint32[] argUA:uniaddress SimpleFun:fn -> ret1:uint8</textarea>
 
             $('ul.generator').on('click', 'a.remove', function() {
                 $(this).closest('li').remove();
+                UpdateGenerator();
             });
 
             $('ul.generator').on('input', 'input,select', UpdateGenerator);
@@ -318,20 +323,19 @@ arg1:uint8 arg2:uint32[] argUA:uniaddress SimpleFun:fn -> ret1:uint8</textarea>
 
 			$('#data_params').html(ul_output);
 
-            
             try{
-                $('#output_data').html(ABIdatagen.GetData(txtABI.value, txtData.value));
+                txtOutputData1.value = ABIdatagen.GetData(txtABI.value, txtData.value);
             }
             catch(e) {
-                $('#output_data').html(e);
+                txtOutputData1.value = e;
             }
         }
         
-
         function UpdateGenerator() {
             output_feedback.innerHTML='';
             txtOutputABI.value='';
             txtOutputData.value='';
+            txtWizardOutputData.value='';
 
             var feedback = '', abiStr='', dataStr=`{\n`;
 
@@ -342,14 +346,36 @@ arg1:uint8 arg2:uint32[] argUA:uniaddress SimpleFun:fn -> ret1:uint8</textarea>
                 abiStr = `:name=${txtContractName.value}\n`;
             }
 
-
             $('ul.generator.input li').each(function() {
                 if($(this).find('input.name').val().trim()!=''){
+                    $(this).find('.feedback').html('');
+
+
                     abiStr += $(this).find('input.name').val() + ':' + $(this).find('select').val() + ' ';
                     if($(this).find('select').val()=='fn'){
                         dataStr += `\t_function: ${$(this).find('input.name').val()}\n`;
                     }
+                    else if($(this).find('select').val()=='uniaddress'){
+                        try {
+                            ABIdatagen.EncodeUA($(this).find('input.val').val());
+                        }
+                        catch (e) {
+                            $(this).find('.feedback').html(e);
+                            feedback = 'Invalid input parameter value.';
+                        }
+
+                        dataStr += `\t` + $(this).find('input.name').val() + ': ' + $(this).find('input.val').val() + `\n`;
+                                               
+                    }
                     else{
+                        try{
+                            ABIdatagen.EncodeValue($(this).find('select').val(), $(this).find('input.val').val() );
+                        }
+                        catch(e) {
+                            $(this).find('.feedback').html(e);
+                            feedback = 'Invalid input parameter value.';
+                        }
+
                         dataStr += `\t` + $(this).find('input.name').val() + ': ' + $(this).find('input.val').val() + `\n`;
                     }
                 }
@@ -359,13 +385,17 @@ arg1:uint8 arg2:uint32[] argUA:uniaddress SimpleFun:fn -> ret1:uint8</textarea>
             abiStr += '-> ';
             dataStr += '}';
 
+            var hasOutputParam=false;
+
             $('ul.generator.output li').each(function() {
                 if($(this).find('input.name').val().trim()!='' || $(this).find('select').val() == 'void'){
-                    if($(this).find('select').val()=='void'){
+                    if($(this).find('select').val()=='void' && !hasOutputParam){
                         abiStr+='void';
+                        hasOutputParam=true;
                     }
-                    else{
+                    else if($(this).find('select').val()!='void'){
                         abiStr += $(this).find('input.name').val() + ':' + $(this).find('select').val() + ' ';
+                        hasOutputParam=true;
                     }
                 }
             })
@@ -377,10 +407,14 @@ arg1:uint8 arg2:uint32[] argUA:uniaddress SimpleFun:fn -> ret1:uint8</textarea>
 
             txtOutputABI.value = abiStr;
             txtOutputData.value=dataStr;
+            try{
+                txtWizardOutputData.value = ABIdatagen.GetData(abiStr, dataStr);
+            }
+            catch(e) {
+
+            }
             $('#txtOutputData').change();
         }
-
-
     </script>
 </body>
 </html>

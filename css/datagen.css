@@ -25,6 +25,7 @@
 
 body {
     background-color: #f5f6f8;
+    padding-bottom:200px;
 }
 
 div#nav {
@@ -121,6 +122,10 @@ textarea:focus {
     border-color:#3273dc;
 }
 
+textarea[readonly] {
+    border:1px solid #b0b0b0;
+}
+
 input[type="text"] {
     border:1px solid #4a4a4a;
     padding:0.25em;
@@ -189,12 +194,6 @@ ul#data_params li.error {
     color:red;
 }
 
-p#output_data {
-    margin-top:0.5em;
-    font-family:'Courier New', Courier, monospace;
-    word-wrap:break-word;
-}
-
 p#output_feedback {
     color:red;
     margin-bottom:0.5rem;
@@ -202,6 +201,14 @@ p#output_feedback {
 
 a.remove {
     cursor:pointer;
+}
+
+ul.generator {
+    margin-bottom:1em;
+}
+
+ul.generator input, ul.generator select {
+    margin-bottom:0.2em;
 }
 
 ul.generator li:only-child a.remove, ul.generator li:last-child a.remove {
@@ -212,9 +219,21 @@ ul.generator input.val {
     width: 60%;
 }
 
+ul.generator select {
+    width:120px;
+}
+
+ul.generator p.feedback {
+    font-size:0.9em;
+    color:red;
+    padding-left:30px;
+}
+
 
 @media screen and (max-width:1384px) {
     header {
         margin-left:20px;
     }
+
+    
 }

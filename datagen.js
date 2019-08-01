@@ -122,12 +122,18 @@ var ABIdatagen = {
         if (value.trim() == '' || value.trim()=='0x') {
             throw "Value required.";
         }
-        if (type.indexOf('int') >= 0) {
+        if (type.indexOf('int') >= 0 || type.indexOf('char')==0) {
             if (type.indexOf('[]') == -1) { //single value
                 ret = this.EncodeNumber(type, value);
             }
             else {
                 var t = type.replace('[]', '');
+                value = value.replace(/ /g, '');
+                var r = RegExp(/^\[-?(0x[\dA-Fa-f]+|\d+)(,-?(0x[\dA-Fa-f]+|\d+))*\]$/);
+                if (!r.test(value)) {
+                    throw 'Malformed array';
+                }
+
                 value = value.replace('[', '').replace(']', '');
                 var nums = value.split(',');
                 for (var i = 0; i < nums.length; i++) {
@@ -144,7 +150,7 @@ var ABIdatagen = {
 
     EncodeNumber: function (type, value) {
         if (typeof (value) == 'string') {
-            if (value.indexOf('0x') == 0) {
+            if (value.indexOf('0x') == 0 || value.indexOf('-0x')==0) {
                 value = parseInt(value, 16);
             }
             else {
@@ -154,9 +160,9 @@ var ABIdatagen = {
         }
         
         var min = 0, max = 0;
-        var bits = parseInt(type.substr(type.indexOf('int') == 0 ? 3 : 4), 10);
+        var bits = (type=='char' ? 8 : parseInt(type.substr(type.indexOf('int') == 0 ? 3 : 4), 10));
         
-        if (type.indexOf('uint') == 0) {
+        if (type.indexOf('uint') == 0 || type=='char') {
             max = Math.pow(2, bits) - 1;
         }
         else {
@@ -221,21 +227,21 @@ var ABIdatagen = {
         return hash;
     },
 
-    EncodeUA: function (UA) {
+    EncodeUA: function (uniaddress) {
         var r = '';
-        if (UA.trim() == '') {
+        if (uniaddress.trim() == '') {
             throw 'Value required.';
         }
 
         try {
-            r = this.Base58Decode(UA);
+            r = this.Base58Decode(uniaddress);
         }
         catch (e) {
-            throw 'Error decoding UA: ' + e;
+            throw 'Error decoding uniaddress: ' + e;
         }
 
         if (r.length != 50) {
-            throw 'Decoded UA incorrect length. Expected 50, got ' + r.length;
+            throw 'Decoded uniaddress incorrect length. Expected 50, got ' + r.length;
         }
 
         var version = r.substr(0, 2), payload = r.substr(2, r.length - 10), checksum = r.substr(r.length - 8);
@@ -244,7 +250,7 @@ var ABIdatagen = {
         var check = this.GetSHA256Hex(this.GetSHA256Hex(checkStr)).substr(0,8);
 
         if(checksum!=check){
-            throw `UA checksum mismatch: expected '${check}', found '${checksum}'`;
+            throw `uniaddress checksum mismatch: expected '${check}', found '${checksum}'`;
         }
         
         return '1800' + this.EncodeNumber('uint32', this.VersionMap[parseInt(version, 16)]) + payload;
