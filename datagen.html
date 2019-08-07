@@ -272,6 +272,10 @@ arg1:uint8 arg2:uint32[] argUA:uniaddress SimpleFun:fn -> ret1:uint8</textarea>
 				}
 				else {
 					var parts = l.split(':'), t='';
+                    if(parts[1][parts[1].length-1]==',')
+                        parts[1]=parts[1].substr(0,parts[1].length-1);
+                    
+                    parts[1]=parts[1].replace(/["']/g, '');
 
 					for(i of abi.InputParams){
 						if((parts[0].trim()==i.Val)

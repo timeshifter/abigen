@@ -103,14 +103,23 @@ var ABIdatagen = {
     },
 
     ParseData: function (datastr) {
-        var lines = datastr.split(/\n/g);
         var output = [];
-        for (i in lines) {
-            var l = lines[i].trim();
-            if (l.length > 1) {
-                var parts = l.split(':');
-                if (parts[0].trim() != '_function') {
-                    output.push({ Param: parts[0].trim(), Val: parts[1].trim() });
+        if (typeof (datastr) == 'object') { //json object
+            for (o in datastr) {
+                if (o != '_function')
+                    output.push({ Param: o, Val: (typeof(datastr[o])=='string' ? datastr[o] : JSON.stringify(datastr[o])) });
+            }
+        }
+        else {
+            var lines = datastr.replace(/["']/g, '').split(/\n/g);
+            
+            for (i in lines) {
+                var l = lines[i].trim();
+                if (l.length > 1) {
+                    var parts = l.split(':');
+                    if (parts[0].trim() != '_function') {
+                        output.push({ Param: parts[0].trim(), Val: parts[1].trim() });
+                    }
                 }
             }
         }
@@ -119,7 +128,10 @@ var ABIdatagen = {
 
     EncodeValue: function (type, value) {
         var ret = '';
-        if (value.trim() == '' || value.trim()=='0x') {
+        value = value.toString().trim();
+        if (value[value.length - 1] == ',')
+            value = value.substr(0, value.length - 1);
+        if (value == '' || value=='0x') {
             throw "Value required.";
         }
         if (type.indexOf('int') >= 0 || type.indexOf('char')==0) {
@@ -229,7 +241,10 @@ var ABIdatagen = {
 
     EncodeUA: function (uniaddress) {
         var r = '';
-        if (uniaddress.trim() == '') {
+        uniaddress = uniaddress.trim();
+        if (uniaddress[uniaddress.length - 1] == ',')
+            uniaddress = uniaddress.substr(0, uniaddress.length - 1);
+        if (uniaddress == '') {
             throw 'Value required.';
         }
 
@@ -276,6 +291,8 @@ var ABIdatagen = {
         var abi = this.ParseContract(abiStr);
         var data = this.ParseData(dataStr);
         var result = '', t;
+
+        console.log(data);
 
         for (i of abi.InputParams) {
             t = undefined;
