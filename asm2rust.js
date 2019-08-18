@@ -110,13 +110,12 @@ ASM2Rust = {
                 args = parts[0];
             }
 
-
             ops.push({
                 opcode: opcode,
                 extended: is_extended,
                 modrm_reg: is_modrm_reg,
                 reg_suffix: is_reg_suffix,
-                group: group_id,
+                group_id: group_id,
                 operation: op,
                 args: args,
                 source: orig
@@ -136,35 +135,114 @@ ASM2Rust = {
 
             //single op
             if (group.length == 1) {
-                result += `    define_opcode(0x${group[0].opcode}).calls(ops::${group[0].operation.toLowerCase()}).with_gas(GAS_PLACEHOLDER)\n`;
+                var t = new this.TestObj();
+                t.group = true;
+                var r = `    define_opcode(0x${group[0].opcode})`;
 
+                t.extended = true;
+                if (group[0].extended) {
+                    r += '.is_extended()';
+                }
+                
+                t.group_id = true;
+                if (group[0].group_id != -1) {
+                    r += `.is_group(${group[0].group_id})`;
+                }
+
+                r += `.calls(ops:: ${ group[0].operation.toLowerCase() }).with_gas(GAS_PLACEHOLDER) \n`;
+
+
+                t.args = true;
                 if (group[0].args != '') {
                     var args = group[0].args.split(',');
                     for (a of args) {
-                        if (group[0].modrm_reg && this.ArgList['/r'][a])
-                            result += '        .' + this.ArgList['/r'][a] + `\n`;
-                        else if (group[0].reg_suffix && this.ArgList['+r'][a])
-                            result += '        .' + this.ArgList['+r'][a] + `\n`;
-                        else
-                            result += '        .' + this.ArgList[a] + `\n`;
+
+                        //m8/m16/m32 WITH /0 through /7 -- Same as rm8/rm16/rm32
+                        if (/^m(8|16|32)$/.test(a) && group[0].group_id != -1) {
+                            a = 'r' + a;
+                        }
+
+                            t.modrm = true;
+                            t.reg_suf = true;
+                        if (group[0].modrm_reg && this.ArgList['/r'][a]) {
+                            requestAnimationFrame += '        .' + this.ArgList['/r'][a] + `\n`;
+                        }
+                        else if (group[0].reg_suffix && this.ArgList['+r'][a]) {
+                            r += '        .' + this.ArgList['+r'][a] + `\n`;
+                        }
+                        else if (/^\d{1}$/.test(a)) {
+                            r += `        .with_arg(Literal(${a}), Fixed(Byte))\n`;    
+                        }
+                        else if (/^m(8|16|32)$/.test(a)) {
+                            r = `//TODO - m8/m16/m32 WITHOUT /0 through /7 -- Exceptional, ask earlz\n`;
+                            break;
+                        }
+                        else {
+                            var t_a = '';
+                            for (arg in this.ArgList) {
+                                if (arg.split('|').indexOf(a) != -1) {
+                                    t_a = this.ArgList[arg];
+                                }
+                            }
+                            t_a = t_a.replace('{0}', a);
+                            r += '        .' + t_a + `\n`;
+                        }
                     }
                 }
+                else {
+                    t.modrm = true;
+                    t.reg_suf = true;
+      
+                }
 
-                result += `        .into_table(&mut ops);\n`;
+                if (r.indexOf('//') != 0) {
+                    r += `        .into_table(&mut ops);\n`;
+                }
+
+                if (t.Test() == 6) {
+                    result += r;
+                }
+                else {
+                    result += t.GetStatus();
+                }
+            }
+            else { //grouped opcode
+                
+
+
+
             }
 
             result += `\n`;
         }
 
         //console.log(lines);
-        console.log(ops);
-
-
-
-
-
+        //console.log(ops);
 
         return result;
+    },
+
+    TestObj: function () {
+        this.modrm = false;
+        this.reg_suf = false;
+        this.group = false;
+        this.extended = false;
+        this.args = false;
+        this.group_id = false;
+        this.Test = function () {
+            return this.modrm + this.reg_suf + this.group + this.extended + this.args + this.group_id;
+        }
+        this.GetStatus = function () {
+            return '//TODO - Not tested for: ' +
+                [
+                    (this.modrm ? undefined : 'modrm'),
+                    (this.reg_suf ? undefined : 'reg_suffix'),
+                    (this.group ? undefined : 'grouped opcode'),
+                    (this.extended ? undefined : 'extended opcode'),
+                    (this.args ? undefined : 'arguments'),
+                    (this.group_id ? undefined : 'group id')
+                ].filter(i => i != undefined).join(', ') + `\n`;
+        }
     }
 
 
