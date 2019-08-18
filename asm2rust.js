@@ -185,7 +185,13 @@ ASM2Rust = {
                                 }
                             }
                             t_a = t_a.replace('{0}', a);
-                            r += '        .' + t_a + `\n`;
+
+                            if (t_a.trim() == '') {
+                                r = `//TODO - um wat?\n`
+                            }
+                            else {
+                                r += '        .' + t_a + `\n`;
+                            }
                         }
                     }
                 }
