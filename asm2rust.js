@@ -124,13 +124,23 @@ ASM2Rust = {
             i++;
         }
 
+        var groups_checked = [];
+
         i = 0;
         while (i < ops.length) {
 
-            var group = ops.filter(e => e.opcode == ops[i].opcode && e.extended == ops[i].extended);
+            var group = ops.filter(e => e.opcode == ops[i].opcode && e.extended == ops[i].extended && e.group_id == ops[i].group_id);
+            i++;
+            var gstr = `${group[0].extended ? '0F' : ''}${group[0].opcode}_${group[0].group_id}`;
+
+            if (groups_checked.indexOf(gstr) > -1)
+                continue;
+            else
+                groups_checked.push(gstr);
+
+
             for (g of group) {
                 result += `    //${g.source}\n`;
-                i++;
             }
 
             //single op
@@ -149,7 +159,7 @@ ASM2Rust = {
                     r += `.is_group(${group[0].group_id})`;
                 }
 
-                r += `.calls(ops:: ${ group[0].operation.toLowerCase() }).with_gas(GAS_PLACEHOLDER) \n`;
+                r += `.calls(ops::${group[0].operation.toLowerCase()}).with_gas(GAS_PLACEHOLDER) \n`;
 
 
                 t.args = true;
@@ -162,8 +172,9 @@ ASM2Rust = {
                             a = 'r' + a;
                         }
 
-                            t.modrm = true;
-                            t.reg_suf = true;
+                        t.modrm = true;
+                        t.reg_suf = true;
+
                         if (group[0].modrm_reg && this.ArgList['/r'][a]) {
                             requestAnimationFrame += '        .' + this.ArgList['/r'][a] + `\n`;
                         }
@@ -171,7 +182,7 @@ ASM2Rust = {
                             r += '        .' + this.ArgList['+r'][a] + `\n`;
                         }
                         else if (/^\d{1}$/.test(a)) {
-                            r += `        .with_arg(Literal(${a}), Fixed(Byte))\n`;    
+                            r += `        .with_arg(Literal(${a}), Fixed(Byte))\n`;
                         }
                         else if (/^m(8|16|32)$/.test(a)) {
                             r = `//TODO - m8/m16/m32 WITHOUT /0 through /7 -- Exceptional, ask earlz\n`;
@@ -212,10 +223,63 @@ ASM2Rust = {
                     result += t.GetStatus();
                 }
             }
-            else { //grouped opcode
+            else if (group.length == 2 && group[0].args != '' && group[1].args != '') { //grouped opcode
+                var args1 = group[0].args.split(','), args2 = group[1].args.split(',');
+                var arg1group = `${args1[0]}+${args2[0]}`, arg2group;
+                if (args1[1])
+                    arg2group = `${args1[1]}+${args2[1]}`;
                 
+                var r = `    define_opcode(0x${group[0].opcode})`;
 
+                t.extended = true;
+                if (group[0].extended) {
+                    r += '.is_extended()';
+                }
 
+                t.group_id = true;
+                if (group[0].group_id != -1) {
+                    r += `.is_group(${group[0].group_id})`;
+                }
+
+                r += `.calls(ops::${group[0].operation.toLowerCase()}).with_gas(GAS_PLACEHOLDER) \n`;
+                
+                //arg 1
+                if (group[0].modrm_reg && this.ArgList['/r'][arg1group])
+                    r += '        .' + this.ArgList['/r'][arg1group] + `\n`;
+                else if (group[0].reg_suffix && this.ArgList['+r'][arg1group])
+                    r += '        .' + this.ArgList['+r'][arg1group] + `\n`;
+                else if (this.ArgList[arg1group])
+                    r += '        .' + this.ArgList[arg1group] + `\n`;
+                else {
+                    var t_a = '';
+                    for (arg in this.ArgList) {
+                        if (arg.split('|').indexOf(args2[0]) != -1) {
+                            t_a = this.ArgList[arg];
+                        }
+                    }
+                    t_a = t_a.replace('{0}', args2[0]);
+
+                    if (t_a.trim() == '') {
+                        r = `//TODO - um wat?\n`
+                    }
+                    else {
+                        r += '        .' + t_a + `\n`;
+                    }
+                }
+                
+                
+                
+                //arg 2
+
+                
+                
+                
+                if (r.indexOf('//') != 0) {
+                    r += `        .into_table(&mut ops);\n`;
+                }
+
+               
+               // result += r;
 
             }
 
